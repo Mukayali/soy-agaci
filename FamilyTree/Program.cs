@@ -18,6 +18,7 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddScoped<IPersonService, PersonService>();
 builder.Services.AddScoped<IPhotoService, PhotoService>();
+builder.Services.AddScoped<IFamilyTreeService, FamilyTreeService>();
 
 builder.Services.Configure<FormOptions>(options =>
 {
@@ -40,6 +41,11 @@ app.UseStaticFiles();
 app.UseRouting();
 
 app.UseAuthorization();
+
+app.MapControllerRoute(
+    name: "familytree",
+    pattern: "FamilyTree/{id:int}",
+    defaults: new { controller = "FamilyTree", action = "Index" });
 
 app.MapControllerRoute(
     name: "default",

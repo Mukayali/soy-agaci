@@ -1,0 +1,54 @@
+@{
+    ViewData["Title"] = "Soy Ağacı";
+    var noPersons = ViewBag.NoPersons == true;
+    int? personId = ViewBag.PersonId;
+    string? personName = ViewBag.PersonName;
+}
+
+<h2 class="mb-3">Soy Ağacı @(personName != null ? $"- {personName}" : "")</h2>
+
+@if (noPersons)
+{
+    <p class="text-muted">Soy ağacını görüntülemek için önce en az bir kişi eklemelisiniz. <a asp-controller="Person" asp-action="Create">Kişi ekle</a></p>
+}
+else
+{
+    <div id="familyTreeApp" data-person-id="@personId">
+        <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+            <div class="position-relative">
+                <input type="text" id="treeSearch" class="form-control" style="width:260px;" placeholder="Kişi ara ve merkez yap..." autocomplete="off" />
+                <div id="treeSearchResults" class="list-group position-absolute w-100" style="z-index:1000;"></div>
+            </div>
+
+            <div class="btn-group" role="group" aria-label="Yakınlaştırma">
+                <button type="button" id="zoomInBtn" class="btn btn-outline-secondary" title="Yakınlaştır">+</button>
+                <button type="button" id="zoomOutBtn" class="btn btn-outline-secondary" title="Uzaklaştır">−</button>
+                <button type="button" id="centerBtn" class="btn btn-outline-secondary" title="Ortala">Ortala</button>
+                <button type="button" id="fullscreenBtn" class="btn btn-outline-secondary" title="Tam Ekran">Tam Ekran</button>
+            </div>
+
+            <div class="btn-group" role="group" aria-label="Genişlet">
+                <button type="button" id="showGrandparentsBtn" class="btn btn-outline-primary btn-sm">+ Dede ve Nineleri Göster</button>
+                <button type="button" id="showGrandchildrenBtn" class="btn btn-outline-primary btn-sm">+ Torunları Göster</button>
+                <button type="button" id="showNephewsBtn" class="btn btn-outline-primary btn-sm">+ Yeğenleri Göster</button>
+            </div>
+        </div>
+
+        <div id="treeWrapper" class="border rounded position-relative" style="height:70vh; background:#fafafa; overflow:hidden;">
+            <div id="treeLoading" class="position-absolute top-50 start-50 translate-middle text-muted d-none">Yükleniyor...</div>
+            <svg id="treeSvg" width="100%" height="100%"></svg>
+        </div>
+
+        <div class="d-flex gap-4 mt-2 text-muted small">
+            <span><span style="display:inline-block;width:20px;border-top:2px solid #555;vertical-align:middle;"></span> Ebeveyn - Çocuk</span>
+            <span><span style="display:inline-block;width:20px;border-top:2px dashed #c2185b;vertical-align:middle;"></span> Eş</span>
+            <span><span class="d-inline-block rounded-circle" style="width:10px;height:10px;background:#9e9e9e;"></span> Vefat etti</span>
+            <span>Kartın üzerine tıklayınca o kişi merkez olur; <strong>↗</strong> ikonuna tıklayınca kişi detayına gidilir.</span>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script src="~/lib/d3/d3.v7.min.js"></script>
+    <script src="~/js/familytree.js" asp-append-version="true"></script>
+}

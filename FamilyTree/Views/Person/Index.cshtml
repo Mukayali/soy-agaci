@@ -46,6 +46,7 @@ else
                     <td class="text-end">
                         <a asp-action="Details" asp-route-id="@p.Id" class="btn btn-sm btn-outline-primary">Detay</a>
                         <a asp-action="Edit" asp-route-id="@p.Id" class="btn btn-sm btn-outline-secondary">Düzenle</a>
+                        <a asp-controller="FamilyTree" asp-action="Index" asp-route-id="@p.Id" class="btn btn-sm btn-outline-success">Soy Ağacını Gör</a>
                         <a asp-action="Delete" asp-route-id="@p.Id" class="btn btn-sm btn-outline-danger">Sil</a>
                     </td>
                 </tr>

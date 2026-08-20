@@ -20,6 +20,7 @@
         }
     </div>
     <div>
+        <a asp-controller="FamilyTree" asp-action="Index" asp-route-id="@Model.Id" class="btn btn-success">Soy Ağacını Gör</a>
         <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Düzenle</a>
         <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger">Sil</a>
     </div>

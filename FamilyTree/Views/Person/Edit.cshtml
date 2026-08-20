@@ -5,6 +5,42 @@
 
 <h2>Kişiyi Düzenle</h2>
 
+@if (Model.ExistingPhotos.Any())
+{
+    <div class="mb-3">
+        <label class="form-label">Mevcut Fotoğraflar</label>
+        <div class="row row-cols-2 row-cols-md-4 g-2">
+            @foreach (var photo in Model.ExistingPhotos)
+            {
+                <div class="col">
+                    <div class="card">
+                        <img src="@photo.FilePath" class="card-img-top" style="height:120px;object-fit:cover;" alt="Fotoğraf" />
+                        <div class="card-body p-2 text-center">
+                            @if (photo.IsPrimary)
+                            {
+                                <span class="badge bg-success mb-1">Ana Fotoğraf</span>
+                            }
+                            else
+                            {
+                                <form asp-action="SetPrimaryPhoto" method="post" class="d-inline">
+                                    <input type="hidden" name="photoId" value="@photo.Id" />
+                                    <input type="hidden" name="personId" value="@Model.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-secondary mb-1">Ana Yap</button>
+                                </form>
+                            }
+                            <form asp-action="DeletePhoto" method="post" onsubmit="return confirm('Fotoğrafı silmek istediğinize emin misiniz?');">
+                                <input type="hidden" name="photoId" value="@photo.Id" />
+                                <input type="hidden" name="personId" value="@Model.Id" />
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Sil</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            }
+        </div>
+    </div>
+}
+
 <form asp-action="Edit" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="mt-3">
     <div asp-validation-summary="ModelOnly" class="text-danger"></div>
     <input type="hidden" asp-for="Id" />
@@ -56,42 +92,6 @@
             <span asp-validation-for="BabaId" class="text-danger"></span>
         </div>
     </div>
-
-    @if (Model.ExistingPhotos.Any())
-    {
-        <div class="mb-3">
-            <label class="form-label">Mevcut Fotoğraflar</label>
-            <div class="row row-cols-2 row-cols-md-4 g-2">
-                @foreach (var photo in Model.ExistingPhotos)
-                {
-                    <div class="col">
-                        <div class="card">
-                            <img src="@photo.FilePath" class="card-img-top" style="height:120px;object-fit:cover;" alt="Fotoğraf" />
-                            <div class="card-body p-2 text-center">
-                                @if (photo.IsPrimary)
-                                {
-                                    <span class="badge bg-success mb-1">Ana Fotoğraf</span>
-                                }
-                                else
-                                {
-                                    <form asp-action="SetPrimaryPhoto" method="post" class="d-inline">
-                                        <input type="hidden" name="photoId" value="@photo.Id" />
-                                        <input type="hidden" name="personId" value="@Model.Id" />
-                                        <button type="submit" class="btn btn-sm btn-outline-secondary mb-1">Ana Yap</button>
-                                    </form>
-                                }
-                                <form asp-action="DeletePhoto" method="post" onsubmit="return confirm('Fotoğrafı silmek istediğinize emin misiniz?');">
-                                    <input type="hidden" name="photoId" value="@photo.Id" />
-                                    <input type="hidden" name="personId" value="@Model.Id" />
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">Sil</button>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-                }
-            </div>
-        </div>
-    }
 
     <div class="mb-3">
         <label asp-for="Photos" class="form-label">Yeni Fotoğraf Ekle</label>
