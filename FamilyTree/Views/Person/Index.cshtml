@@ -1,0 +1,69 @@
+@model PersonIndexViewModel
+@{
+    ViewData["Title"] = "Kişiler";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Kişiler <span class="text-muted fs-6">(@Model.TotalCount kayıt)</span></h2>
+    <a asp-action="Create" class="btn btn-primary">+ Yeni Kişi</a>
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-auto">
+        <input type="text" name="q" value="@Model.Query" class="form-control" placeholder="Ad, soyad veya TC Kimlik No" />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-outline-secondary">Ara</button>
+    </div>
+</form>
+
+@if (!Model.Persons.Any())
+{
+    <p class="text-muted">Kayıt bulunamadı.</p>
+}
+else
+{
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Ad Soyad</th>
+                <th>Doğum</th>
+                <th>Ölüm</th>
+                <th>Anne</th>
+                <th>Baba</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in Model.Persons)
+            {
+                <tr>
+                    <td>@p.AdSoyad</td>
+                    <td>@(p.DogumTarihi?.ToString("dd.MM.yyyy") ?? "-")</td>
+                    <td>@(p.OlumTarihi?.ToString("dd.MM.yyyy") ?? "-")</td>
+                    <td>@(p.AnneAdSoyad ?? "-")</td>
+                    <td>@(p.BabaAdSoyad ?? "-")</td>
+                    <td class="text-end">
+                        <a asp-action="Details" asp-route-id="@p.Id" class="btn btn-sm btn-outline-primary">Detay</a>
+                        <a asp-action="Edit" asp-route-id="@p.Id" class="btn btn-sm btn-outline-secondary">Düzenle</a>
+                        <a asp-action="Delete" asp-route-id="@p.Id" class="btn btn-sm btn-outline-danger">Sil</a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    @if (Model.TotalPages > 1)
+    {
+        <nav>
+            <ul class="pagination">
+                @for (var i = 1; i <= Model.TotalPages; i++)
+                {
+                    <li class="page-item @(i == Model.Page ? "active" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-q="@Model.Query" asp-route-page="@i">@i</a>
+                    </li>
+                }
+            </ul>
+        </nav>
+    }
+}

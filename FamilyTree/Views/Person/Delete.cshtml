@@ -1,0 +1,43 @@
+@model PersonDetailViewModel
+@{
+    ViewData["Title"] = "Kişi Sil";
+    var childCount = (int)ViewBag.ChildCount;
+    var spouseCount = (int)ViewBag.SpouseCount;
+}
+
+<h2>Kişiyi Sil</h2>
+
+<div class="alert alert-warning">
+    <strong>@Model.AdSoyad</strong> kişisini silmek istediğinizden emin misiniz?
+    @if (childCount > 0 || spouseCount > 0)
+    {
+        <p class="mb-0 mt-2">
+            Bu kişiye bağlı aile ilişkileri bulunmaktadır:
+            @if (childCount > 0)
+            {
+                <span>@childCount çocuk</span>
+            }
+            @if (childCount > 0 && spouseCount > 0)
+            {
+                <span>, </span>
+            }
+            @if (spouseCount > 0)
+            {
+                <span>@spouseCount eş ilişkisi</span>
+            }
+            . Kişi kaydı silinmesine rağmen bu ilişkiler veritabanında saklanmaya devam edecektir (yumuşak silme).
+        </p>
+    }
+</div>
+
+<dl class="row">
+    <dt class="col-sm-2">Ad Soyad</dt>
+    <dd class="col-sm-10">@Model.AdSoyad</dd>
+    <dt class="col-sm-2">Doğum Tarihi</dt>
+    <dd class="col-sm-10">@(Model.DogumTarihi?.ToString("dd.MM.yyyy") ?? "-")</dd>
+</dl>
+
+<form asp-action="Delete" asp-route-id="@Model.Id" method="post">
+    <button type="submit" class="btn btn-danger">Evet, Sil</button>
+    <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Vazgeç</a>
+</form>

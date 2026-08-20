@@ -1,0 +1,159 @@
+@model PersonEditViewModel
+@{
+    ViewData["Title"] = "Kişi Düzenle";
+}
+
+<h2>Kişiyi Düzenle</h2>
+
+<form asp-action="Edit" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data" class="mt-3">
+    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+    <input type="hidden" asp-for="Id" />
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            <label asp-for="Ad" class="form-label"></label>
+            <input asp-for="Ad" class="form-control" />
+            <span asp-validation-for="Ad" class="text-danger"></span>
+        </div>
+        <div class="col-md-6 mb-3">
+            <label asp-for="Soyad" class="form-label"></label>
+            <input asp-for="Soyad" class="form-control" />
+            <span asp-validation-for="Soyad" class="text-danger"></span>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            <label asp-for="TcKimlikNo" class="form-label"></label>
+            <input asp-for="TcKimlikNo" class="form-control" maxlength="11" />
+            <span asp-validation-for="TcKimlikNo" class="text-danger"></span>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label asp-for="DogumTarihi" class="form-label"></label>
+            <input asp-for="DogumTarihi" class="form-control" type="date" />
+            <span asp-validation-for="DogumTarihi" class="text-danger"></span>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label asp-for="OlumTarihi" class="form-label"></label>
+            <input asp-for="OlumTarihi" class="form-control" type="date" />
+            <span asp-validation-for="OlumTarihi" class="text-danger"></span>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-6 mb-3 position-relative">
+            <label class="form-label">Anne</label>
+            <input type="text" id="anneSearch" class="form-control" placeholder="Anne ara..." autocomplete="off" value="@Model.AnneAdSoyad" />
+            <input asp-for="AnneId" type="hidden" id="AnneId" />
+            <div id="anneResults" class="list-group position-absolute w-100" style="z-index:1000;"></div>
+            <span asp-validation-for="AnneId" class="text-danger"></span>
+        </div>
+        <div class="col-md-6 mb-3 position-relative">
+            <label class="form-label">Baba</label>
+            <input type="text" id="babaSearch" class="form-control" placeholder="Baba ara..." autocomplete="off" value="@Model.BabaAdSoyad" />
+            <input asp-for="BabaId" type="hidden" id="BabaId" />
+            <div id="babaResults" class="list-group position-absolute w-100" style="z-index:1000;"></div>
+            <span asp-validation-for="BabaId" class="text-danger"></span>
+        </div>
+    </div>
+
+    @if (Model.ExistingPhotos.Any())
+    {
+        <div class="mb-3">
+            <label class="form-label">Mevcut Fotoğraflar</label>
+            <div class="row row-cols-2 row-cols-md-4 g-2">
+                @foreach (var photo in Model.ExistingPhotos)
+                {
+                    <div class="col">
+                        <div class="card">
+                            <img src="@photo.FilePath" class="card-img-top" style="height:120px;object-fit:cover;" alt="Fotoğraf" />
+                            <div class="card-body p-2 text-center">
+                                @if (photo.IsPrimary)
+                                {
+                                    <span class="badge bg-success mb-1">Ana Fotoğraf</span>
+                                }
+                                else
+                                {
+                                    <form asp-action="SetPrimaryPhoto" method="post" class="d-inline">
+                                        <input type="hidden" name="photoId" value="@photo.Id" />
+                                        <input type="hidden" name="personId" value="@Model.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary mb-1">Ana Yap</button>
+                                    </form>
+                                }
+                                <form asp-action="DeletePhoto" method="post" onsubmit="return confirm('Fotoğrafı silmek istediğinize emin misiniz?');">
+                                    <input type="hidden" name="photoId" value="@photo.Id" />
+                                    <input type="hidden" name="personId" value="@Model.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Sil</button>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    }
+
+    <div class="mb-3">
+        <label asp-for="Photos" class="form-label">Yeni Fotoğraf Ekle</label>
+        <input type="file" name="Photos" id="Photos" class="form-control" multiple accept=".jpg,.jpeg,.png,.webp" />
+        <div class="form-text">JPG, PNG veya WEBP, dosya başına en fazla 10 MB.</div>
+    </div>
+
+    <div class="mb-3">
+        <label asp-for="Aciklama" class="form-label"></label>
+        <textarea asp-for="Aciklama" class="form-control" rows="4"></textarea>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Kaydet</button>
+    <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Vazgeç</a>
+</form>
+
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+    <script>
+        function setupPersonSearch(inputId, resultsId, hiddenId, excludeId) {
+            const input = document.getElementById(inputId);
+            const results = document.getElementById(resultsId);
+            const hidden = document.getElementById(hiddenId);
+            let timeoutId;
+
+            input.addEventListener('input', function () {
+                hidden.value = '';
+                clearTimeout(timeoutId);
+                const q = input.value.trim();
+                if (q.length < 2) {
+                    results.innerHTML = '';
+                    return;
+                }
+                timeoutId = setTimeout(function () {
+                    fetch('/api/person/search?q=' + encodeURIComponent(q) + '&excludeId=' + excludeId)
+                        .then(r => r.json())
+                        .then(data => {
+                            results.innerHTML = '';
+                            data.forEach(function (item) {
+                                const el = document.createElement('button');
+                                el.type = 'button';
+                                el.className = 'list-group-item list-group-item-action';
+                                el.textContent = item.adSoyad + (item.dogumYili ? ' (' + item.dogumYili + (item.olumYili ? ' - ' + item.olumYili : '') + ')' : '');
+                                el.addEventListener('click', function () {
+                                    input.value = item.adSoyad;
+                                    hidden.value = item.id;
+                                    results.innerHTML = '';
+                                });
+                                results.appendChild(el);
+                            });
+                        });
+                }, 250);
+            });
+
+            document.addEventListener('click', function (e) {
+                if (e.target !== input) {
+                    results.innerHTML = '';
+                }
+            });
+        }
+
+        setupPersonSearch('anneSearch', 'anneResults', 'AnneId', @Model.Id);
+        setupPersonSearch('babaSearch', 'babaResults', 'BabaId', @Model.Id);
+    </script>
+}

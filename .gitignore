@@ -1,0 +1,29 @@
+# Build results
+bin/
+obj/
+out/
+
+# Visual Studio / Rider / VS Code
+.vs/
+.vscode/
+.idea/
+*.user
+*.suo
+
+# ASP.NET Core
+*.pubxml
+*.pubxml.user
+
+# User-uploaded content (kept out of source control)
+FamilyTree/wwwroot/uploads/*
+!FamilyTree/wwwroot/uploads/.gitkeep
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# User secrets are stored outside the repo (dotnet user-secrets), never commit real credentials
+**/secrets.json

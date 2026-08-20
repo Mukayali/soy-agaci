@@ -1,0 +1,56 @@
+@model HomeViewModel
+@{
+    ViewData["Title"] = "Ana Sayfa";
+}
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="card text-center shadow-sm">
+            <div class="card-body">
+                <h2 class="display-6">@Model.ToplamKisi</h2>
+                <p class="text-muted mb-0">Toplam Kişi</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center shadow-sm">
+            <div class="card-body">
+                <h2 class="display-6">@Model.ToplamFotograf</h2>
+                <p class="text-muted mb-0">Toplam Fotoğraf</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-center shadow-sm">
+            <div class="card-body">
+                <a asp-controller="Person" asp-action="Create" class="btn btn-primary btn-lg mt-2">+ Yeni Kişi Ekle</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<h4 class="mb-3">Son Eklenen Kişiler</h4>
+
+@if (!Model.SonEklenenler.Any())
+{
+    <p class="text-muted">Henüz kişi eklenmemiş. <a asp-controller="Person" asp-action="Create">İlk kişiyi ekleyin.</a></p>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-md-3 g-3">
+        @foreach (var person in Model.SonEklenenler)
+        {
+            <div class="col">
+                <div class="card h-100 shadow-sm">
+                    <div class="card-body">
+                        <h5 class="card-title">@person.AdSoyad</h5>
+                        <p class="card-text text-muted">
+                            @(person.DogumTarihi?.ToString("yyyy") ?? "?") - @(person.OlumTarihi?.ToString("yyyy") ?? "")
+                        </p>
+                        <a asp-controller="Person" asp-action="Details" asp-route-id="@person.Id" class="btn btn-sm btn-outline-primary">Detay</a>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}

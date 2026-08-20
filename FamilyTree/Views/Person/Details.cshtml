@@ -1,0 +1,224 @@
+@model PersonDetailViewModel
+@{
+    ViewData["Title"] = Model.AdSoyad;
+}
+
+<div class="d-flex justify-content-between align-items-start mb-3">
+    <div>
+        <h2>@Model.AdSoyad</h2>
+        <p class="text-muted mb-0">
+            @(Model.DogumTarihi?.ToString("dd.MM.yyyy") ?? "?") -
+            @(Model.Hayatta ? "" : Model.OlumTarihi?.ToString("dd.MM.yyyy"))
+            @if (!Model.Hayatta)
+            {
+                <span class="badge bg-secondary ms-2">Vefat Etti</span>
+            }
+        </p>
+        @if (Model.TcKimlikNoMasked != null)
+        {
+            <p class="text-muted mb-0">TC Kimlik No: @Model.TcKimlikNoMasked</p>
+        }
+    </div>
+    <div>
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Düzenle</a>
+        <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger">Sil</a>
+    </div>
+</div>
+
+@if (Model.Photos.Any())
+{
+    <div class="row row-cols-2 row-cols-md-5 g-2 mb-4">
+        @foreach (var photo in Model.Photos)
+        {
+            <div class="col">
+                <img src="@photo.FilePath" class="img-fluid rounded @(photo.IsPrimary ? "border border-3 border-success" : "")" style="height:150px;object-fit:cover;width:100%;" alt="@Model.AdSoyad fotoğrafı" />
+            </div>
+        }
+    </div>
+}
+
+@if (!string.IsNullOrWhiteSpace(Model.Aciklama))
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Açıklama</h5>
+            <p class="card-text">@Model.Aciklama</p>
+        </div>
+    </div>
+}
+
+<div class="row">
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Anne / Baba</h5>
+                <p>
+                    <strong>Anne:</strong>
+                    @if (Model.Anne != null)
+                    {
+                        <a asp-action="Details" asp-route-id="@Model.Anne.Id">@Model.Anne.AdSoyad</a>
+                    }
+                    else
+                    {
+                        <span class="text-muted">Belirtilmemiş</span>
+                    }
+                </p>
+                <p>
+                    <strong>Baba:</strong>
+                    @if (Model.Baba != null)
+                    {
+                        <a asp-action="Details" asp-route-id="@Model.Baba.Id">@Model.Baba.AdSoyad</a>
+                    }
+                    else
+                    {
+                        <span class="text-muted">Belirtilmemiş</span>
+                    }
+                </p>
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Eşler</h5>
+                @if (Model.Esler.Any())
+                {
+                    <ul class="list-unstyled">
+                        @foreach (var e in Model.Esler)
+                        {
+                            <li><a asp-action="Details" asp-route-id="@e.Id">@e.AdSoyad</a></li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p class="text-muted">Kayıtlı eş bulunmuyor.</p>
+                }
+                <form asp-action="AddSpouse" method="post" class="d-flex gap-2 position-relative">
+                    <input type="hidden" name="personId" value="@Model.Id" />
+                    <input type="text" id="spouseSearch" class="form-control" placeholder="Eş ara..." autocomplete="off" />
+                    <input type="hidden" name="spouseId" id="spouseId" />
+                    <button type="submit" class="btn btn-outline-primary">Ekle</button>
+                    <div id="spouseResults" class="list-group position-absolute w-100" style="top:100%;z-index:1000;"></div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Kardeşler (@Model.Kardesler.Count)</h5>
+                @if (Model.Kardesler.Any())
+                {
+                    <ul class="list-unstyled">
+                        @foreach (var k in Model.Kardesler)
+                        {
+                            <li><a asp-action="Details" asp-route-id="@k.Id">@k.AdSoyad</a></li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p class="text-muted">Kayıtlı kardeş bulunmuyor.</p>
+                }
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Çocuklar (@Model.Cocuklar.Count)</h5>
+                @if (Model.Cocuklar.Any())
+                {
+                    <ul class="list-unstyled">
+                        @foreach (var c in Model.Cocuklar)
+                        {
+                            <li><a asp-action="Details" asp-route-id="@c.Id">@c.AdSoyad</a></li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p class="text-muted">Kayıtlı çocuk bulunmuyor.</p>
+                }
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Torunlar (@Model.Torunlar.Count)</h5>
+                @if (Model.Torunlar.Any())
+                {
+                    <ul class="list-unstyled">
+                        @foreach (var t in Model.Torunlar)
+                        {
+                            <li><a asp-action="Details" asp-route-id="@t.Id">@t.AdSoyad</a></li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p class="text-muted">Kayıtlı torun bulunmuyor.</p>
+                }
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Yeğenler (@Model.Yegenler.Count)</h5>
+                @if (Model.Yegenler.Any())
+                {
+                    <ul class="list-unstyled">
+                        @foreach (var y in Model.Yegenler)
+                        {
+                            <li><a asp-action="Details" asp-route-id="@y.Id">@y.AdSoyad</a></li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p class="text-muted">Kayıtlı yeğen bulunmuyor.</p>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            const input = document.getElementById('spouseSearch');
+            const results = document.getElementById('spouseResults');
+            const hidden = document.getElementById('spouseId');
+            let timeoutId;
+
+            input.addEventListener('input', function () {
+                hidden.value = '';
+                clearTimeout(timeoutId);
+                const q = input.value.trim();
+                if (q.length < 2) {
+                    results.innerHTML = '';
+                    return;
+                }
+                timeoutId = setTimeout(function () {
+                    fetch('/api/person/search?q=' + encodeURIComponent(q) + '&excludeId=@Model.Id')
+                        .then(r => r.json())
+                        .then(data => {
+                            results.innerHTML = '';
+                            data.forEach(function (item) {
+                                const el = document.createElement('button');
+                                el.type = 'button';
+                                el.className = 'list-group-item list-group-item-action';
+                                el.textContent = item.adSoyad + (item.dogumYili ? ' (' + item.dogumYili + ')' : '');
+                                el.addEventListener('click', function () {
+                                    input.value = item.adSoyad;
+                                    hidden.value = item.id;
+                                    results.innerHTML = '';
+                                });
+                                results.appendChild(el);
+                            });
+                        });
+                }, 250);
+            });
+        })();
+    </script>
+}
