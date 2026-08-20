@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using FamilyTree.Models;
 using Microsoft.AspNetCore.Http;
 
 namespace FamilyTree.ViewModels;
@@ -12,6 +13,9 @@ public class PersonListItemViewModel
     public string? AnneAdSoyad { get; set; }
     public string? BabaAdSoyad { get; set; }
     public string? PrimaryPhotoPath { get; set; }
+
+    /// <summary>Bu kişinin merkez kişiye göre akrabalık etiketi (ör. "Dede (Anne tarafı)"). Sadece bazı listelerde kullanılır.</summary>
+    public string? Rol { get; set; }
 }
 
 public class PersonIndexViewModel
@@ -55,6 +59,9 @@ public class PersonCreateViewModel : IValidatableObject
     [Display(Name = "Ölüm Tarihi")]
     [DataType(DataType.Date)]
     public DateTime? OlumTarihi { get; set; }
+
+    [Display(Name = "Cinsiyet")]
+    public Gender? Cinsiyet { get; set; }
 
     [Display(Name = "Anne")]
     public int? AnneId { get; set; }
@@ -139,6 +146,14 @@ public class PersonDetailViewModel
     public List<PersonListItemViewModel> Kardesler { get; set; } = new();
     public List<PersonListItemViewModel> Torunlar { get; set; } = new();
     public List<PersonListItemViewModel> Yegenler { get; set; } = new();
+
+    /// <summary>Anne ve baba tarafından büyükanne/büyükbabalar; her öğenin Rol alanı (Dede/Nine + taraf) doludur.</summary>
+    public List<PersonListItemViewModel> BuyukebeveynLer { get; set; } = new();
+    public List<PersonListItemViewModel> Amcalar { get; set; } = new();
+    public List<PersonListItemViewModel> Dayilar { get; set; } = new();
+    public List<PersonListItemViewModel> Halalar { get; set; } = new();
+    public List<PersonListItemViewModel> Teyzeler { get; set; } = new();
+    public List<PersonListItemViewModel> Kuzenler { get; set; } = new();
 
     public List<PersonPhotoViewModel> Photos { get; set; } = new();
 }

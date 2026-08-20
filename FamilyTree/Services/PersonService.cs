@@ -22,8 +22,10 @@ public class PersonService : IPersonService
     {
         var person = await _context.Persons
             .AsNoTracking()
-            .Include(p => p.Anne)
-            .Include(p => p.Baba)
+            .Include(p => p.Anne).ThenInclude(a => a!.Anne)
+            .Include(p => p.Anne).ThenInclude(a => a!.Baba)
+            .Include(p => p.Baba).ThenInclude(b => b!.Anne)
+            .Include(p => p.Baba).ThenInclude(b => b!.Baba)
             .Include(p => p.Photos)
             .Include(p => p.SpouseRelationshipsAsPerson1).ThenInclude(sr => sr.Person2)
             .Include(p => p.SpouseRelationshipsAsPerson2).ThenInclude(sr => sr.Person1)
@@ -76,6 +78,61 @@ public class PersonService : IPersonService
             .Concat(person.SpouseRelationshipsAsPerson2.Select(sr => sr.Person1))
             .ToList();
 
+        var buyukebeveynler = new List<PersonListItemViewModel>();
+        if (person.Anne?.Anne != null)
+        {
+            buyukebeveynler.Add(ToListItem(person.Anne.Anne, "Nine (Anne tarafı)"));
+        }
+
+        if (person.Anne?.Baba != null)
+        {
+            buyukebeveynler.Add(ToListItem(person.Anne.Baba, "Dede (Anne tarafı)"));
+        }
+
+        if (person.Baba?.Anne != null)
+        {
+            buyukebeveynler.Add(ToListItem(person.Baba.Anne, "Nine (Baba tarafı)"));
+        }
+
+        if (person.Baba?.Baba != null)
+        {
+            buyukebeveynler.Add(ToListItem(person.Baba.Baba, "Dede (Baba tarafı)"));
+        }
+
+        var anneninAnneId = person.Anne?.AnneId;
+        var anneninBabaId = person.Anne?.BabaId;
+        var anneKardesleri = person.Anne == null || (anneninAnneId == null && anneninBabaId == null)
+            ? new List<Person>()
+            : await _context.Persons.AsNoTracking()
+                .Where(p => p.Id != person.AnneId &&
+                    ((anneninAnneId.HasValue && p.AnneId == anneninAnneId) ||
+                     (anneninBabaId.HasValue && p.BabaId == anneninBabaId)))
+                .ToListAsync();
+
+        var babaninAnneId = person.Baba?.AnneId;
+        var babaninBabaId = person.Baba?.BabaId;
+        var babaKardesleri = person.Baba == null || (babaninAnneId == null && babaninBabaId == null)
+            ? new List<Person>()
+            : await _context.Persons.AsNoTracking()
+                .Where(p => p.Id != person.BabaId &&
+                    ((babaninAnneId.HasValue && p.AnneId == babaninAnneId) ||
+                     (babaninBabaId.HasValue && p.BabaId == babaninBabaId)))
+                .ToListAsync();
+
+        var dayilar = anneKardesleri.Where(p => p.Cinsiyet == Gender.Erkek).ToList();
+        var teyzeler = anneKardesleri.Where(p => p.Cinsiyet == Gender.Kadin).ToList();
+        var amcalar = babaKardesleri.Where(p => p.Cinsiyet == Gender.Erkek).ToList();
+        var halalar = babaKardesleri.Where(p => p.Cinsiyet == Gender.Kadin).ToList();
+
+        var ebeveynKardesIds = anneKardesleri.Concat(babaKardesleri).Select(p => p.Id).Distinct().ToList();
+        var kuzenler = ebeveynKardesIds.Count == 0
+            ? new List<Person>()
+            : await _context.Persons.AsNoTracking()
+                .Where(p => (p.AnneId.HasValue && ebeveynKardesIds.Contains(p.AnneId.Value)) ||
+                            (p.BabaId.HasValue && ebeveynKardesIds.Contains(p.BabaId.Value)))
+                .OrderBy(p => p.DogumTarihi)
+                .ToListAsync();
+
         var vm = new PersonDetailViewModel
         {
             Id = person.Id,
@@ -87,11 +144,17 @@ public class PersonService : IPersonService
             Aciklama = person.Aciklama,
             Anne = person.Anne == null ? null : ToListItem(person.Anne),
             Baba = person.Baba == null ? null : ToListItem(person.Baba),
-            Esler = spouses.Select(ToListItem).ToList(),
-            Cocuklar = children.Select(ToListItem).ToList(),
-            Kardesler = siblings.Select(ToListItem).ToList(),
-            Torunlar = grandchildren.Select(ToListItem).ToList(),
-            Yegenler = nieces.Select(ToListItem).ToList(),
+            Esler = spouses.Select(p => ToListItem(p)).ToList(),
+            Cocuklar = children.Select(p => ToListItem(p)).ToList(),
+            Kardesler = siblings.Select(p => ToListItem(p)).ToList(),
+            Torunlar = grandchildren.Select(p => ToListItem(p)).ToList(),
+            Yegenler = nieces.Select(p => ToListItem(p)).ToList(),
+            BuyukebeveynLer = buyukebeveynler,
+            Amcalar = amcalar.Select(p => ToListItem(p)).ToList(),
+            Dayilar = dayilar.Select(p => ToListItem(p)).ToList(),
+            Halalar = halalar.Select(p => ToListItem(p)).ToList(),
+            Teyzeler = teyzeler.Select(p => ToListItem(p)).ToList(),
+            Kuzenler = kuzenler.Select(p => ToListItem(p)).ToList(),
             Photos = person.Photos
                 .OrderByDescending(p => p.IsPrimary)
                 .ThenBy(p => p.CreatedAt)
@@ -130,6 +193,7 @@ public class PersonService : IPersonService
             TcKimlikNo = person.TcKimlikNo,
             DogumTarihi = person.DogumTarihi,
             OlumTarihi = person.OlumTarihi,
+            Cinsiyet = person.Cinsiyet,
             AnneId = person.AnneId,
             BabaId = person.BabaId,
             AnneAdSoyad = person.Anne == null ? null : $"{person.Anne.Ad} {person.Anne.Soyad}",
@@ -176,7 +240,7 @@ public class PersonService : IPersonService
 
         return new PersonIndexViewModel
         {
-            Persons = persons.Select(ToListItem).ToList(),
+            Persons = persons.Select(p => ToListItem(p)).ToList(),
             Query = query,
             Page = page,
             PageSize = pageSize,
@@ -237,6 +301,7 @@ public class PersonService : IPersonService
             TcKimlikNo = string.IsNullOrWhiteSpace(model.TcKimlikNo) ? null : model.TcKimlikNo.Trim(),
             DogumTarihi = model.DogumTarihi,
             OlumTarihi = model.OlumTarihi,
+            Cinsiyet = model.Cinsiyet,
             AnneId = model.AnneId,
             BabaId = model.BabaId,
             Aciklama = model.Aciklama,
@@ -285,6 +350,7 @@ public class PersonService : IPersonService
         person.TcKimlikNo = string.IsNullOrWhiteSpace(model.TcKimlikNo) ? null : model.TcKimlikNo.Trim();
         person.DogumTarihi = model.DogumTarihi;
         person.OlumTarihi = model.OlumTarihi;
+        person.Cinsiyet = model.Cinsiyet;
         person.AnneId = model.AnneId;
         person.BabaId = model.BabaId;
         person.Aciklama = model.Aciklama;
@@ -421,7 +487,7 @@ public class PersonService : IPersonService
         return visited;
     }
 
-    private static PersonListItemViewModel ToListItem(Person p) => new()
+    private static PersonListItemViewModel ToListItem(Person p, string? rol = null) => new()
     {
         Id = p.Id,
         AdSoyad = $"{p.Ad} {p.Soyad}",
@@ -429,6 +495,7 @@ public class PersonService : IPersonService
         OlumTarihi = p.OlumTarihi,
         AnneAdSoyad = p.Anne == null ? null : $"{p.Anne.Ad} {p.Anne.Soyad}",
         BabaAdSoyad = p.Baba == null ? null : $"{p.Baba.Ad} {p.Baba.Soyad}",
+        Rol = rol,
     };
 
     private static string? MaskTc(string? tc)

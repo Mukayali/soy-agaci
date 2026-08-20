@@ -164,13 +164,13 @@ public class FamilyTreeService : IFamilyTreeService
 
             if (parent.Anne != null)
             {
-                graph.Nodes.Add(ToNode(parent.Anne, -2, "Büyükebeveyn"));
+                graph.Nodes.Add(ToNode(parent.Anne, -2, "Nine"));
                 graph.Links.Add(new FamilyTreeLinkDto { Source = parent.Anne.Id, Target = parent.Id, Relationship = "parent" });
             }
 
             if (parent.Baba != null)
             {
-                graph.Nodes.Add(ToNode(parent.Baba, -2, "Büyükebeveyn"));
+                graph.Nodes.Add(ToNode(parent.Baba, -2, "Dede"));
                 graph.Links.Add(new FamilyTreeLinkDto { Source = parent.Baba.Id, Target = parent.Id, Relationship = "parent" });
             }
 
@@ -277,6 +277,132 @@ public class FamilyTreeService : IFamilyTreeService
             if (nephew.BabaId.HasValue && siblingIds.Contains(nephew.BabaId.Value))
             {
                 graph.Links.Add(new FamilyTreeLinkDto { Source = nephew.BabaId.Value, Target = nephew.Id, Relationship = "parent" });
+            }
+        }
+
+        DeduplicateNodes(graph);
+        return graph;
+    }
+
+    public async Task<FamilyTreeGraphDto> GetAuntsUnclesAsync(int personId)
+    {
+        var graph = new FamilyTreeGraphDto();
+
+        var person = await _context.Persons
+            .AsNoTracking()
+            .Include(p => p.Anne)
+            .Include(p => p.Baba)
+            .FirstOrDefaultAsync(p => p.Id == personId);
+
+        if (person == null)
+        {
+            return graph;
+        }
+
+        async Task AddSideAsync(Person? parent, string erkekRol, string kadinRol, string belirsizRol)
+        {
+            if (parent == null || (!parent.AnneId.HasValue && !parent.BabaId.HasValue))
+            {
+                return;
+            }
+
+            var siblings = await _context.Persons
+                .AsNoTracking()
+                .Include(p => p.Photos)
+                .Where(p => p.Id != parent.Id &&
+                    ((parent.AnneId.HasValue && p.AnneId == parent.AnneId) ||
+                     (parent.BabaId.HasValue && p.BabaId == parent.BabaId)))
+                .ToListAsync();
+
+            foreach (var sibling in siblings)
+            {
+                var role = sibling.Cinsiyet switch
+                {
+                    Gender.Erkek => erkekRol,
+                    Gender.Kadin => kadinRol,
+                    _ => belirsizRol,
+                };
+
+                graph.Nodes.Add(ToNode(sibling, -1, role));
+
+                if (parent.AnneId.HasValue && sibling.AnneId == parent.AnneId)
+                {
+                    graph.Links.Add(new FamilyTreeLinkDto { Source = parent.AnneId.Value, Target = sibling.Id, Relationship = "parent" });
+                }
+
+                if (parent.BabaId.HasValue && sibling.BabaId == parent.BabaId)
+                {
+                    graph.Links.Add(new FamilyTreeLinkDto { Source = parent.BabaId.Value, Target = sibling.Id, Relationship = "parent" });
+                }
+            }
+        }
+
+        await AddSideAsync(person.Anne, "Dayı", "Teyze", "Anne Tarafından Kardeş");
+        await AddSideAsync(person.Baba, "Amca", "Hala", "Baba Tarafından Kardeş");
+
+        DeduplicateNodes(graph);
+        return graph;
+    }
+
+    public async Task<FamilyTreeGraphDto> GetCousinsAsync(int personId)
+    {
+        var graph = new FamilyTreeGraphDto();
+
+        var person = await _context.Persons
+            .AsNoTracking()
+            .Include(p => p.Anne)
+            .Include(p => p.Baba)
+            .FirstOrDefaultAsync(p => p.Id == personId);
+
+        if (person == null)
+        {
+            return graph;
+        }
+
+        async Task<List<Person>> GetParentSiblingsAsync(Person? parent)
+        {
+            if (parent == null || (!parent.AnneId.HasValue && !parent.BabaId.HasValue))
+            {
+                return new List<Person>();
+            }
+
+            return await _context.Persons
+                .AsNoTracking()
+                .Where(p => p.Id != parent.Id &&
+                    ((parent.AnneId.HasValue && p.AnneId == parent.AnneId) ||
+                     (parent.BabaId.HasValue && p.BabaId == parent.BabaId)))
+                .ToListAsync();
+        }
+
+        var ebeveynKardesleri = (await GetParentSiblingsAsync(person.Anne))
+            .Concat(await GetParentSiblingsAsync(person.Baba))
+            .ToList();
+
+        var ebeveynKardesIds = ebeveynKardesleri.Select(p => p.Id).Distinct().ToList();
+        if (ebeveynKardesIds.Count == 0)
+        {
+            return graph;
+        }
+
+        var cousins = await _context.Persons
+            .AsNoTracking()
+            .Include(p => p.Photos)
+            .Where(p => (p.AnneId.HasValue && ebeveynKardesIds.Contains(p.AnneId.Value)) ||
+                        (p.BabaId.HasValue && ebeveynKardesIds.Contains(p.BabaId.Value)))
+            .ToListAsync();
+
+        foreach (var cousin in cousins)
+        {
+            graph.Nodes.Add(ToNode(cousin, 0, "Kuzen"));
+
+            if (cousin.AnneId.HasValue && ebeveynKardesIds.Contains(cousin.AnneId.Value))
+            {
+                graph.Links.Add(new FamilyTreeLinkDto { Source = cousin.AnneId.Value, Target = cousin.Id, Relationship = "parent" });
+            }
+
+            if (cousin.BabaId.HasValue && ebeveynKardesIds.Contains(cousin.BabaId.Value))
+            {
+                graph.Links.Add(new FamilyTreeLinkDto { Source = cousin.BabaId.Value, Target = cousin.Id, Relationship = "parent" });
             }
         }
 

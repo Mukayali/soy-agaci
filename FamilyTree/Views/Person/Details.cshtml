@@ -80,6 +80,25 @@
 
         <div class="card mb-4">
             <div class="card-body">
+                <h5 class="card-title">Büyükanne / Büyükbaba (@Model.BuyukebeveynLer.Count)</h5>
+                @if (Model.BuyukebeveynLer.Any())
+                {
+                    <ul class="list-unstyled">
+                        @foreach (var b in Model.BuyukebeveynLer)
+                        {
+                            <li><a asp-action="Details" asp-route-id="@b.Id">@b.AdSoyad</a> <span class="text-muted">(@b.Rol)</span></li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p class="text-muted">Kayıtlı büyükanne/büyükbaba bulunmuyor.</p>
+                }
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
                 <h5 class="card-title">Eşler</h5>
                 @if (Model.Esler.Any())
                 {
@@ -178,6 +197,56 @@
                 else
                 {
                     <p class="text-muted">Kayıtlı yeğen bulunmuyor.</p>
+                }
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Amca / Dayı / Hala / Teyze</h5>
+                @{
+                    var amcaDayiHalaTeyze = new[]
+                    {
+                        ("Amca", Model.Amcalar),
+                        ("Dayı", Model.Dayilar),
+                        ("Hala", Model.Halalar),
+                        ("Teyze", Model.Teyzeler),
+                    };
+                }
+                @if (Model.Amcalar.Any() || Model.Dayilar.Any() || Model.Halalar.Any() || Model.Teyzeler.Any())
+                {
+                    <ul class="list-unstyled">
+                        @foreach (var (rol, liste) in amcaDayiHalaTeyze)
+                        {
+                            @foreach (var kisi in liste)
+                            {
+                                <li><a asp-action="Details" asp-route-id="@kisi.Id">@kisi.AdSoyad</a> <span class="text-muted">(@rol)</span></li>
+                            }
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p class="text-muted">Kayıtlı amca, dayı, hala veya teyze bulunmuyor. Bu ilişkilerin gösterilebilmesi için anne/babanın kardeşlerinde cinsiyet bilgisinin girilmiş olması gerekir.</p>
+                }
+            </div>
+        </div>
+
+        <div class="card mb-4">
+            <div class="card-body">
+                <h5 class="card-title">Kuzenler (@Model.Kuzenler.Count)</h5>
+                @if (Model.Kuzenler.Any())
+                {
+                    <ul class="list-unstyled">
+                        @foreach (var k in Model.Kuzenler)
+                        {
+                            <li><a asp-action="Details" asp-route-id="@k.Id">@k.AdSoyad</a></li>
+                        }
+                    </ul>
+                }
+                else
+                {
+                    <p class="text-muted">Kayıtlı kuzen bulunmuyor.</p>
                 }
             </div>
         </div>

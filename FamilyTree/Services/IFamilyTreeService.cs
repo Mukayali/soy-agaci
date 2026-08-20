@@ -17,4 +17,10 @@ public interface IFamilyTreeService
 
     /// <summary>Kardeşlerin çocuklarını (yeğenleri) döndürür.</summary>
     Task<FamilyTreeGraphDto> GetNephewsAsync(int personId);
+
+    /// <summary>Anne ve babanın kardeşlerini döndürür (cinsiyete göre amca/dayı/hala/teyze olarak etiketlenir).</summary>
+    Task<FamilyTreeGraphDto> GetAuntsUnclesAsync(int personId);
+
+    /// <summary>Amca/dayı/hala/teyzelerin çocuklarını (kuzenleri) döndürür.</summary>
+    Task<FamilyTreeGraphDto> GetCousinsAsync(int personId);
 }

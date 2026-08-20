@@ -26,6 +26,8 @@ public class Person
 
     public string? Aciklama { get; set; }
 
+    public Gender? Cinsiyet { get; set; }
+
     public int? AnneId { get; set; }
 
     public int? BabaId { get; set; }

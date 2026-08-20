@@ -4,7 +4,7 @@ ASP.NET Core MVC (.NET 8) + Entity Framework Core + MySQL tabanlı bir soy ağac
 
 Mimari kararlar ve geliştirme kuralları için bkz. [CLAUDE.md](./CLAUDE.md).
 
-## Bu sürümde neler var (Faz 1-4)
+## Bu sürümde neler var (Faz 1-5)
 
 - **Kişi yönetimi**: ekleme, düzenleme, silme (soft delete), listeleme, arama, sayfalama
 - **Aile ilişkileri**: anne/baba (self-referencing FK), eş (`SpouseRelationship`), kardeş/torun/yeğen otomatik hesaplama
@@ -13,9 +13,12 @@ Mimari kararlar ve geliştirme kuralları için bkz. [CLAUDE.md](./CLAUDE.md).
 - **TC Kimlik No**: opsiyonel, benzersiz, detay sayfasında maskelenerek gösterilir
 - **AJAX kişi arama**: anne/baba/eş seçiminde canlı arama (`/api/person/search`)
 - **Soy ağacı görselleştirmesi (D3.js)**: `/FamilyTree/{id}` — merkez kişiyi baz alan, zoom/pan destekli
-  görsel ağaç. Kart tıklanınca o kişi merkez olur, ↗ ikonu kişi detayına götürür. "+ Dede ve Nineleri
-  Göster / Torunları Göster / Yeğenleri Göster" butonlarıyla artımlı genişletme yapılır
-  (`/api/familytree/{id}`, `/grandparents`, `/grandchildren`, `/nephews`)
+  görsel ağaç. Kart tıklanınca o kişi merkez olur, ↗ ikonu kişi detayına götürür. Artımlı genişletme
+  butonları: Dede/Nine, Torun, Yeğen, **Amca/Dayı/Hala/Teyze**, **Kuzen**
+  (`/api/familytree/{id}`, `/grandparents`, `/grandchildren`, `/nephews`, `/aunts-uncles`, `/cousins`)
+- **Genişletilmiş akrabalık hesaplama**: Kişi detay sayfasında büyükanne/büyükbaba (Dede/Nine, taraf
+  etiketiyle), amca, dayı, hala, teyze ve kuzenler otomatik hesaplanıp listelenir. Amca/dayı/hala/teyze
+  ayrımı için Person modelinde opsiyonel bir `Cinsiyet` alanı bulunur (bkz. `CLAUDE.md` Bölüm 5)
 
 Kullanıcı/rol yönetimi henüz eklenmedi — bkz. `CLAUDE.md` Faz 6.
 

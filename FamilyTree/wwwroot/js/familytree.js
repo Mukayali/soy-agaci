@@ -29,10 +29,15 @@
         currentPersonId: null,
         nodesById: new Map(),
         links: [],
-        grandparentsShown: false,
-        grandchildrenShown: false,
-        nephewsShown: false,
     };
+
+    var EXPAND_BUTTON_IDS = [
+        'showGrandparentsBtn',
+        'showGrandchildrenBtn',
+        'showNephewsBtn',
+        'showAuntsUnclesBtn',
+        'showCousinsBtn',
+    ];
 
     function setLoading(isLoading) {
         loadingEl.classList.toggle('d-none', !isLoading);
@@ -60,12 +65,9 @@
     }
 
     function resetExpandButtons() {
-        state.grandparentsShown = false;
-        state.grandchildrenShown = false;
-        state.nephewsShown = false;
-        document.getElementById('showGrandparentsBtn').disabled = false;
-        document.getElementById('showGrandchildrenBtn').disabled = false;
-        document.getElementById('showNephewsBtn').disabled = false;
+        EXPAND_BUTTON_IDS.forEach(function (id) {
+            document.getElementById(id).disabled = false;
+        });
     }
 
     function computeLayout() {
@@ -421,6 +423,12 @@
     });
     document.getElementById('showNephewsBtn').addEventListener('click', function () {
         expand('nephews', 'nephews', 'showNephewsBtn');
+    });
+    document.getElementById('showAuntsUnclesBtn').addEventListener('click', function () {
+        expand('aunts-uncles', 'aunts-uncles', 'showAuntsUnclesBtn');
+    });
+    document.getElementById('showCousinsBtn').addEventListener('click', function () {
+        expand('cousins', 'cousins', 'showCousinsBtn');
     });
 
     var searchInput = document.getElementById('treeSearch');

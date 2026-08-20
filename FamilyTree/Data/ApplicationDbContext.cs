@@ -29,6 +29,10 @@ public class ApplicationDbContext : DbContext
             entity.HasIndex(p => p.AnneId);
             entity.HasIndex(p => p.BabaId);
 
+            entity.Property(p => p.Cinsiyet)
+                .HasConversion<string>()
+                .HasMaxLength(10);
+
             entity.HasOne(p => p.Anne)
                 .WithMany(p => p.AnneCocuklari)
                 .HasForeignKey(p => p.AnneId)

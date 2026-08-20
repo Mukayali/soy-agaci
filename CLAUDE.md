@@ -202,6 +202,13 @@ modelBuilder.Entity<Person>()
     .OnDelete(DeleteBehavior.Restrict);
 ```
 
+**Cinsiyet alanı (Faz 5 için eklendi):** Amca/Dayı/Hala/Teyze gibi cinsiyete bağlı akrabalık
+etiketlerinin doğru hesaplanabilmesi için Person modeline opsiyonel bir `Cinsiyet` alanı
+(`Erkek` / `Kadin` enum, nullable) eklenmiştir. Anne/Baba alanları zaten doğası gereği
+cinsiyet taşıdığından (Anne=kadın, Baba=erkek), Dede/Nine etiketleri bu alan olmadan da
+doğru hesaplanabilir; Cinsiyet alanı yalnızca bir kişinin **kendi** kardeşlerinin
+amca/hala mı yoksa dayı/teyze mi olduğunu ayırt etmek için gereklidir.
+
 ---
 
 # 6. TC Kimlik Numarası
@@ -1444,15 +1451,20 @@ Unit testlerde gerçek MySQL veritabanına bağımlı olunmamalı; EF Core InMem
 
 ### Faz 5
 
-* [ ] Torun
-* [ ] Yeğen
-* [ ] Dede
-* [ ] Nine
-* [ ] Amca
-* [ ] Dayı
-* [ ] Hala
-* [ ] Teyze
-* [ ] Kuzen
+* [x] Torun
+* [x] Yeğen
+* [x] Dede
+* [x] Nine
+* [x] Amca
+* [x] Dayı
+* [x] Hala
+* [x] Teyze
+* [x] Kuzen
+
+> Not: Amca/Dayı/Hala/Teyze ayrımı kişinin cinsiyetine bağlı olduğundan, Person modeline
+> opsiyonel bir `Cinsiyet` alanı eklendi (bkz. Bölüm 5). Cinsiyeti girilmemiş
+> ebeveyn kardeşleri bu dört listede görünmez; Kuzenler listesi ise cinsiyetten
+> bağımsız olarak hesaplanır.
 
 ### Faz 6
 

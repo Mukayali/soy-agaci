@@ -77,6 +77,16 @@
     </div>
 
     <div class="row">
+        <div class="col-md-4 mb-3">
+            <label asp-for="Cinsiyet" class="form-label"></label>
+            <select asp-for="Cinsiyet" asp-items="Html.GetEnumSelectList<FamilyTree.Models.Gender>()" class="form-select">
+                <option value="">Belirtilmemiş</option>
+            </select>
+            <div class="form-text">Amca/dayı/hala/teyze gibi akrabalık etiketlerinin doğru gösterilebilmesi için kullanılır.</div>
+        </div>
+    </div>
+
+    <div class="row">
         <div class="col-md-6 mb-3 position-relative">
             <label class="form-label">Anne</label>
             <input type="text" id="anneSearch" class="form-control" placeholder="Anne ara..." autocomplete="off" value="@Model.AnneAdSoyad" />

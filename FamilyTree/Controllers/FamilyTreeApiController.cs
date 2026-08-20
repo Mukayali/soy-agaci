@@ -43,4 +43,16 @@ public class FamilyTreeApiController : ControllerBase
     {
         return Ok(await _familyTreeService.GetNephewsAsync(id));
     }
+
+    [HttpGet("{id:int}/aunts-uncles")]
+    public async Task<IActionResult> GetAuntsUncles(int id)
+    {
+        return Ok(await _familyTreeService.GetAuntsUnclesAsync(id));
+    }
+
+    [HttpGet("{id:int}/cousins")]
+    public async Task<IActionResult> GetCousins(int id)
+    {
+        return Ok(await _familyTreeService.GetCousinsAsync(id));
+    }
 }
