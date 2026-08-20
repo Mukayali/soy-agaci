@@ -1,0 +1,31 @@
+@{
+    ViewData["Title"] = "Yedekleme";
+}
+
+<h2 class="mb-3">Yedekleme</h2>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Anlık Yedek Al</h5>
+        <p class="card-text text-muted">
+            Veritabanının tamamının (<code>mysqldump</code> ile) bir SQL yedeğini indirir.
+            Büyük veritabanlarında bu işlem biraz sürebilir.
+        </p>
+        <form asp-action="Create" method="post">
+            <button type="submit" class="btn btn-primary">Yedek Al ve İndir</button>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">Otomatik (Zamanlanmış) Yedekleme</h5>
+        <p class="card-text text-muted">
+            Düzenli yedekleme için sunucuda <code>scripts/backup.sh</code> betiğini cron ile
+            zamanlayabilirsiniz. Betik <code>mysqldump</code> ile yedek alır, sıkıştırır ve
+            eski yedekleri belirtilen saklama süresine göre otomatik temizler.
+        </p>
+        <pre class="bg-light p-3 rounded"><code># Her gece 03:00'te yedek al (crontab -e)
+0 3 * * * DB_PASSWORD='...' /path/to/scripts/backup.sh >> /var/log/soyagaci-backup.log 2>&1</code></pre>
+    </div>
+</div>

@@ -27,3 +27,6 @@ Thumbs.db
 
 # User secrets are stored outside the repo (dotnet user-secrets), never commit real credentials
 **/secrets.json
+
+# Veritabanı yedekleri (scripts/backup.sh çıktısı, gerçek kişisel veri içerir)
+backups/

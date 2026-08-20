@@ -1472,7 +1472,7 @@ Unit testlerde gerçek MySQL veritabanına bağımlı olunmamalı; EF Core InMem
 * [x] Roller (Admin / Editor / Viewer)
 * [x] Yetkilendirme (global `RequireAuthenticatedUser` fallback policy + rol bazlı `[Authorize(Roles=...)]`)
 * [x] Audit log (AuditLogs tablosu, Admin-only görüntüleme sayfası)
-* [ ] Yedekleme (mysqldump tabanlı)
+* [x] Yedekleme (mysqldump tabanlı — hem Admin panelinden anlık indirme hem `scripts/backup.sh` ile cron)
 * [x] Veri dışa aktarma (Kişiler listesi CSV olarak dışa aktarılabiliyor)
 
 > Not: İlk Admin hesabı `Seed:AdminEmail` / `Seed:AdminPassword` yapılandırma değerleri

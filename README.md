@@ -26,8 +26,11 @@ Mimari kararlar ve geliştirme kuralları için bkz. [CLAUDE.md](./CLAUDE.md).
   tablosuna kaydedilir (kullanıcı, işlem, tarih, IP, varlık); TC Kimlik No veya şifre asla loglanmaz.
   Admin-only `/AuditLog` sayfasından incelenebilir.
 - **Veri dışa aktarma**: Kişiler sayfasından mevcut arama filtresine göre CSV dışa aktarma.
+- **Yedekleme (mysqldump tabanlı)**: Admin-only `/Backup` sayfasından anlık `.sql` yedeği indirilebilir;
+  düzenli/otomatik yedekleme için `scripts/backup.sh` betiği cron ile zamanlanabilir (bkz. aşağıda).
 
-Yedekleme (mysqldump tabanlı) henüz eklenmedi — bkz. `CLAUDE.md` Faz 6.
+Faz 1-6'nın tamamı tamamlandı — kalan işler artık CLAUDE.md Bölüm 50'deki gelecek özellikleri
+(GEDCOM, PDF/PNG dışa aktarma, gelişmiş raporlama vb.) kapsıyor.
 
 ## Gereksinimler
 
@@ -80,22 +83,50 @@ Yedekleme (mysqldump tabanlı) henüz eklenmedi — bkz. `CLAUDE.md` Faz 6.
 
 ## Roller
 
-| Rol    | Kişi görüntüleme | Kişi ekleme/düzenleme | Kişi silme | Kullanıcı yönetimi | Audit log |
-|--------|:---:|:---:|:---:|:---:|:---:|
-| Admin  | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Editor | ✓ | ✓ | ✗ | ✗ | ✗ |
-| Viewer | ✓ | ✗ | ✗ | ✗ | ✗ |
+| Rol    | Kişi görüntüleme | Kişi ekleme/düzenleme | Kişi silme | Kullanıcı yönetimi | Audit log | Yedekleme |
+|--------|:---:|:---:|:---:|:---:|:---:|:---:|
+| Admin  | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Editor | ✓ | ✓ | ✗ | ✗ | ✗ | ✗ |
+| Viewer | ✓ | ✗ | ✗ | ✗ | ✗ | ✗ |
+
+## Yedekleme
+
+İki yol vardır:
+
+1. **Admin panelinden anlık indirme**: `/Backup` sayfasında "Yedek Al ve İndir" butonu, sunucuda
+   `mysqldump` çalıştırıp sonucu doğrudan `.sql` dosyası olarak tarayıcıya indirir. Sunucuda
+   `mysqldump` komutunun PATH'te bulunması gerekir.
+
+2. **Zamanlanmış (cron) yedekleme**: `scripts/backup.sh` betiği `mysqldump` ile yedek alır,
+   `gzip` ile sıkıştırır ve `RETENTION_DAYS` (varsayılan 14 gün) süresinden eski yedekleri
+   otomatik siler.
+
+   ```bash
+   DB_PASSWORD='...' ./scripts/backup.sh
+   ```
+
+   Cron ile örnek zamanlama (`crontab -e`):
+
+   ```cron
+   0 3 * * * DB_PASSWORD='...' /opt/soyagaci/scripts/backup.sh >> /var/log/soyagaci-backup.log 2>&1
+   ```
+
+   Yedekler varsayılan olarak proje kökündeki `backups/` klasörüne yazılır (bu klasör git'e
+   dahil değildir, gerçek kişisel veri içerdiğinden asla commit edilmemelidir).
 
 ## Proje yapısı
 
 ```text
 FamilyTree/
-├── Controllers/     # Person, PersonApi, FamilyTree, FamilyTreeApi, Account, Users, AuditLog, Home
+├── Controllers/     # Person, PersonApi, FamilyTree, FamilyTreeApi, Account, Users, AuditLog, Backup, Home
 ├── Models/           # Person, PersonPhoto, SpouseRelationship, ApplicationUser, AuditLog, Gender
 ├── Data/              # ApplicationDbContext (IdentityDbContext<ApplicationUser>)
-├── Services/         # IPersonService / IPhotoService / IFamilyTreeService / IAuditLogService
+├── Services/         # IPersonService / IPhotoService / IFamilyTreeService / IAuditLogService / IBackupService
 ├── ViewModels/
 ├── Views/
 ├── Migrations/
 └── wwwroot/uploads/  # Yüklenen fotoğraflar (git'e dahil değil)
+
+scripts/
+└── backup.sh          # mysqldump tabanlı, cron ile zamanlanabilir yedekleme betiği
 ```
