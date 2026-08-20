@@ -1,9 +1,10 @@
 using FamilyTree.Models;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace FamilyTree.Data;
 
-public class ApplicationDbContext : DbContext
+public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 {
     public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options)
         : base(options)
@@ -15,6 +16,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<PersonPhoto> PersonPhotos => Set<PersonPhoto>();
 
     public DbSet<SpouseRelationship> SpouseRelationships => Set<SpouseRelationship>();
+
+    public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -65,6 +68,12 @@ public class ApplicationDbContext : DbContext
                 .WithMany(p => p.SpouseRelationshipsAsPerson2)
                 .HasForeignKey(sr => sr.Person2Id)
                 .OnDelete(DeleteBehavior.Restrict);
+        });
+
+        modelBuilder.Entity<AuditLog>(entity =>
+        {
+            entity.HasIndex(a => a.Tarih);
+            entity.HasIndex(a => a.UserId);
         });
     }
 }

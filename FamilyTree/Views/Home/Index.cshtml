@@ -23,7 +23,14 @@
     <div class="col-md-4">
         <div class="card text-center shadow-sm">
             <div class="card-body">
-                <a asp-controller="Person" asp-action="Create" class="btn btn-primary btn-lg mt-2">+ Yeni Kişi Ekle</a>
+                @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+                {
+                    <a asp-controller="Person" asp-action="Create" class="btn btn-primary btn-lg mt-2">+ Yeni Kişi Ekle</a>
+                }
+                else
+                {
+                    <a asp-controller="Person" asp-action="Index" class="btn btn-outline-primary btn-lg mt-2">Kişileri Görüntüle</a>
+                }
             </div>
         </div>
     </div>
@@ -33,7 +40,13 @@
 
 @if (!Model.SonEklenenler.Any())
 {
-    <p class="text-muted">Henüz kişi eklenmemiş. <a asp-controller="Person" asp-action="Create">İlk kişiyi ekleyin.</a></p>
+    <p class="text-muted">
+        Henüz kişi eklenmemiş.
+        @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+        {
+            <a asp-controller="Person" asp-action="Create">İlk kişiyi ekleyin.</a>
+        }
+    </p>
 }
 else
 {

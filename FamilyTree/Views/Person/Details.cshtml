@@ -21,8 +21,14 @@
     </div>
     <div>
         <a asp-controller="FamilyTree" asp-action="Index" asp-route-id="@Model.Id" class="btn btn-success">Soy Ağacını Gör</a>
-        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Düzenle</a>
-        <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger">Sil</a>
+        @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+        {
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Düzenle</a>
+        }
+        @if (User.IsInRole("Admin"))
+        {
+            <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-outline-danger">Sil</a>
+        }
     </div>
 </div>
 
@@ -113,13 +119,16 @@
                 {
                     <p class="text-muted">Kayıtlı eş bulunmuyor.</p>
                 }
-                <form asp-action="AddSpouse" method="post" class="d-flex gap-2 position-relative">
-                    <input type="hidden" name="personId" value="@Model.Id" />
-                    <input type="text" id="spouseSearch" class="form-control" placeholder="Eş ara..." autocomplete="off" />
-                    <input type="hidden" name="spouseId" id="spouseId" />
-                    <button type="submit" class="btn btn-outline-primary">Ekle</button>
-                    <div id="spouseResults" class="list-group position-absolute w-100" style="top:100%;z-index:1000;"></div>
-                </form>
+                @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+                {
+                    <form asp-action="AddSpouse" method="post" class="d-flex gap-2 position-relative">
+                        <input type="hidden" name="personId" value="@Model.Id" />
+                        <input type="text" id="spouseSearch" class="form-control" placeholder="Eş ara..." autocomplete="off" />
+                        <input type="hidden" name="spouseId" id="spouseId" />
+                        <button type="submit" class="btn btn-outline-primary">Ekle</button>
+                        <div id="spouseResults" class="list-group position-absolute w-100" style="top:100%;z-index:1000;"></div>
+                    </form>
+                }
             </div>
         </div>
     </div>
@@ -259,6 +268,9 @@
             const input = document.getElementById('spouseSearch');
             const results = document.getElementById('spouseResults');
             const hidden = document.getElementById('spouseId');
+            if (!input) {
+                return;
+            }
             let timeoutId;
 
             input.addEventListener('input', function () {

@@ -18,24 +18,50 @@
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
-                    <ul class="navbar-nav flex-grow-1">
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Ana Sayfa</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Person" asp-action="Index">Kişiler</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Person" asp-action="Create">Kişi Ekle</a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="FamilyTree" asp-action="Index">Soy Ağacı</a>
-                        </li>
-                    </ul>
-                    <form class="d-flex" asp-controller="Person" asp-action="Index" method="get" role="search">
-                        <input class="form-control me-2" type="search" name="q" placeholder="Ad, soyad veya TC ara..." aria-label="Ara">
-                        <button class="btn btn-outline-success" type="submit">Ara</button>
-                    </form>
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <ul class="navbar-nav flex-grow-1">
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Ana Sayfa</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="Person" asp-action="Index">Kişiler</a>
+                            </li>
+                            @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-area="" asp-controller="Person" asp-action="Create">Kişi Ekle</a>
+                                </li>
+                            }
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-area="" asp-controller="FamilyTree" asp-action="Index">Soy Ağacı</a>
+                            </li>
+                            @if (User.IsInRole("Admin"))
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-area="" asp-controller="Users" asp-action="Index">Kullanıcılar</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link text-dark" asp-area="" asp-controller="AuditLog" asp-action="Index">Audit Log</a>
+                                </li>
+                            }
+                        </ul>
+                        <div class="d-flex align-items-center gap-2">
+                            <form class="d-flex" asp-controller="Person" asp-action="Index" method="get" role="search">
+                                <input class="form-control me-2" type="search" name="q" placeholder="Ad, soyad veya TC ara..." aria-label="Ara">
+                                <button class="btn btn-outline-success" type="submit">Ara</button>
+                            </form>
+                            <span class="text-muted small text-nowrap">@User.Identity!.Name</span>
+                            <form asp-controller="Account" asp-action="Logout" method="post" class="d-inline">
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">Çıkış</button>
+                            </form>
+                        </div>
+                    }
+                    else
+                    {
+                        <ul class="navbar-nav flex-grow-1"></ul>
+                        <a class="btn btn-outline-primary" asp-controller="Account" asp-action="Login">Giriş Yap</a>
+                    }
                 </div>
             </div>
         </nav>

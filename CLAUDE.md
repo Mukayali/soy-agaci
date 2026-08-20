@@ -1468,12 +1468,17 @@ Unit testlerde gerçek MySQL veritabanına bağımlı olunmamalı; EF Core InMem
 
 ### Faz 6
 
-* [ ] Kullanıcı sistemi
-* [ ] Roller
-* [ ] Yetkilendirme
-* [ ] Audit log
+* [x] Kullanıcı sistemi (ASP.NET Core Identity)
+* [x] Roller (Admin / Editor / Viewer)
+* [x] Yetkilendirme (global `RequireAuthenticatedUser` fallback policy + rol bazlı `[Authorize(Roles=...)]`)
+* [x] Audit log (AuditLogs tablosu, Admin-only görüntüleme sayfası)
 * [ ] Yedekleme (mysqldump tabanlı)
-* [ ] Veri dışa aktarma
+* [x] Veri dışa aktarma (Kişiler listesi CSV olarak dışa aktarılabiliyor)
+
+> Not: İlk Admin hesabı `Seed:AdminEmail` / `Seed:AdminPassword` yapılandırma değerleri
+> (User Secrets veya ortam değişkeni ile) üzerinden, uygulama ilk kez ve hiç kullanıcı
+> yokken başlatıldığında otomatik oluşturulur. Bu değerler koda veya appsettings.json'a
+> **asla** yazılmamalıdır (bkz. README "Kurulum").
 
 ---
 

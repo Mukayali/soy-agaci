@@ -1,0 +1,44 @@
+@model AuditLogListViewModel
+@{
+    ViewData["Title"] = "Audit Log";
+}
+
+<h2 class="mb-3">Audit Log <span class="text-muted fs-6">(@Model.TotalCount kayıt)</span></h2>
+
+<table class="table table-sm table-hover align-middle">
+    <thead>
+        <tr>
+            <th>Tarih</th>
+            <th>Kullanıcı</th>
+            <th>İşlem</th>
+            <th>Varlık</th>
+            <th>IP</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model.Items)
+        {
+            <tr>
+                <td class="text-nowrap">@item.Tarih.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                <td>@(item.KullaniciAdi ?? "-")</td>
+                <td>@item.Islem</td>
+                <td>@item.Entity@(item.EntityId.HasValue ? $" #{item.EntityId}" : "")</td>
+                <td>@(item.Ip ?? "-")</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@if (Model.TotalPages > 1)
+{
+    <nav>
+        <ul class="pagination">
+            @for (var i = 1; i <= Model.TotalPages; i++)
+            {
+                <li class="page-item @(i == Model.Page ? "active" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-page="@i">@i</a>
+                </li>
+            }
+        </ul>
+    </nav>
+}
