@@ -4,7 +4,7 @@ ASP.NET Core MVC (.NET 8) + Entity Framework Core + MySQL tabanlı bir soy ağac
 
 Mimari kararlar ve geliştirme kuralları için bkz. [CLAUDE.md](./CLAUDE.md).
 
-## Bu sürümde neler var (Faz 1-3)
+## Bu sürümde neler var (Faz 1-4)
 
 - **Kişi yönetimi**: ekleme, düzenleme, silme (soft delete), listeleme, arama, sayfalama
 - **Aile ilişkileri**: anne/baba (self-referencing FK), eş (`SpouseRelationship`), kardeş/torun/yeğen otomatik hesaplama
@@ -12,8 +12,12 @@ Mimari kararlar ve geliştirme kuralları için bkz. [CLAUDE.md](./CLAUDE.md).
 - **Fotoğraf yönetimi**: kişi başına çoklu fotoğraf, MIME/imza doğrulamalı güvenli yükleme, ana fotoğraf seçimi
 - **TC Kimlik No**: opsiyonel, benzersiz, detay sayfasında maskelenerek gösterilir
 - **AJAX kişi arama**: anne/baba/eş seçiminde canlı arama (`/api/person/search`)
+- **Soy ağacı görselleştirmesi (D3.js)**: `/FamilyTree/{id}` — merkez kişiyi baz alan, zoom/pan destekli
+  görsel ağaç. Kart tıklanınca o kişi merkez olur, ↗ ikonu kişi detayına götürür. "+ Dede ve Nineleri
+  Göster / Torunları Göster / Yeğenleri Göster" butonlarıyla artımlı genişletme yapılır
+  (`/api/familytree/{id}`, `/grandparents`, `/grandchildren`, `/nephews`)
 
-Soy ağacı görselleştirmesi (D3.js) ve kullanıcı/rol yönetimi henüz eklenmedi — bkz. `CLAUDE.md` Faz 4 ve Faz 6.
+Kullanıcı/rol yönetimi henüz eklenmedi — bkz. `CLAUDE.md` Faz 6.
 
 ## Gereksinimler
 

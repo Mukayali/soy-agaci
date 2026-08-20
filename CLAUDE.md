@@ -1436,11 +1436,11 @@ Unit testlerde gerçek MySQL veritabanına bağımlı olunmamalı; EF Core InMem
 
 ### Faz 4
 
-* [ ] Soy ağacı görselleştirmesi
-* [ ] Zoom
-* [ ] Pan
-* [ ] Kişi seçme
-* [ ] Kişi detayına geçiş
+* [x] Soy ağacı görselleştirmesi (D3.js)
+* [x] Zoom
+* [x] Pan
+* [x] Kişi seçme
+* [x] Kişi detayına geçiş
 
 ### Faz 5
 
