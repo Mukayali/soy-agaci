@@ -32,14 +32,16 @@ Mimari kararlar ve geliştirme kuralları için bkz. [CLAUDE.md](./CLAUDE.md).
   (tüm kullanıcılar) ve içe aktarma (Admin/Editor). Diğer soy ağacı programlarıyla (Ancestry,
   MyHeritage, Gramps vb.) veri alışverişi sağlar; TC Kimlik No dışa aktarılmaz, belirsiz tarihler
   (`ABT 1950` gibi) yanlış kesinlik oluşturmamak için açıklama alanına not olarak düşülür.
-- **PDF soy ağacı dışa aktarma**: `/FamilyTree/{id}` sayfasındaki "PDF İndir" butonu, ekranda
-  yüklü tüm soy ağacını (tüm genişletmeler dahil) tek sayfalık bir PDF olarak indirir. Tamamen
-  istemci tarafında çalışır (sunucuda headless tarayıcı gerektirmez); Türkçe karakterlerin
-  (ş, ğ, ı, İ) doğru görünmesi için tarayıcının kendi font motoruyla rasterleştirilir — bkz.
-  `CLAUDE.md` Bölüm 51.1'de bu tasarımın gerekçesi (jsPDF'in özel font gömme hatası).
+- **PDF / PNG / SVG soy ağacı dışa aktarma**: `/FamilyTree/{id}` sayfasındaki "PDF İndir",
+  "PNG İndir" ve "SVG İndir" butonları, ekranda yüklü tüm soy ağacını (tüm genişletmeler
+  dahil) ilgili formatta indirir. Tamamen istemci tarafında çalışır (sunucuda headless
+  tarayıcı gerektirmez); Türkçe karakterlerin (ş, ğ, ı, İ) doğru görünmesi için PDF/PNG
+  tarayıcının kendi font motoruyla rasterleştirilir, SVG ise doğrudan vektör olarak (en
+  sadık sonuç, Illustrator/Inkscape'te düzenlenebilir) indirilir — bkz. `CLAUDE.md`
+  Bölüm 51.1'de bu tasarımın gerekçesi (jsPDF'in özel font gömme hatası).
 
 Faz 1-6'nın tamamı tamamlandı — kalan işler artık CLAUDE.md Bölüm 50'deki gelecek özellikleri
-(PNG/SVG dışa aktarma, gelişmiş raporlama vb.) kapsıyor.
+(aile olayları, gelişmiş raporlama, harita entegrasyonu vb.) kapsıyor.
 
 ## Gereksinimler
 

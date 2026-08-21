@@ -1615,7 +1615,7 @@ Mimari aşağıdaki özelliklerin eklenmesine uygun olmalıdır:
 * Harita üzerinde yaşam yerleri
 * ~~GEDCOM import/export~~ (uygulandı, bkz. Bölüm 51)
 * ~~PDF soy ağacı dışa aktarma~~ (uygulandı, bkz. Bölüm 51.1 — `/FamilyTree` sayfasında "PDF İndir")
-* PNG/SVG soy ağacı dışa aktarma (PDF için kullanılan JPEG rasterleştirme yaklaşımı ileride buna da uyarlanabilir)
+* ~~PNG/SVG soy ağacı dışa aktarma~~ (uygulandı, bkz. Bölüm 51.1 — `/FamilyTree` sayfasında "PNG İndir" / "SVG İndir")
 * ~~Excel/CSV dışa aktarma~~ (CSV kısmı uygulandı — `PersonController.ExportCsv`; Excel formatı henüz yok)
 * Gelişmiş arama
 * Aile bazlı kullanıcı yetkilendirmesi
@@ -1647,14 +1647,22 @@ engel olmayacak şekilde tasarlanmıştır.
 
 ---
 
-# 51.1. PDF Soy Ağacı Dışa Aktarma
+# 51.1. PDF / PNG / SVG Soy Ağacı Dışa Aktarma
 
-**Durum: Uygulandı.** `/FamilyTree/{id}` sayfasındaki "PDF İndir" butonu, o an ekranda
-yüklü olan tüm soy ağacını (kullanıcının açtığı tüm genişletmeler dahil, mevcut zoom/pan
-durumundan bağımsız olarak tam içerik) bir PDF dosyası olarak indirir. İşlem **tamamen
-istemci tarafında** (`familytree.js`, `exportPdf()`) gerçekleşir — sunucuda ayrıca bir
-headless tarayıcı veya PDF render motoru çalıştırılmaz, bu da CLAUDE.md'nin "gereksiz
-bağımlılık oluşturulmamalı" ilkesine uygundur.
+**Durum: Uygulandı.** `/FamilyTree/{id}` sayfasındaki "PDF İndir", "PNG İndir" ve
+"SVG İndir" butonları, o an ekranda yüklü olan tüm soy ağacını (kullanıcının açtığı tüm
+genişletmeler dahil, mevcut zoom/pan durumundan bağımsız olarak tam içerik) sırasıyla
+`.pdf`, `.png` ve `.svg` dosyası olarak indirir. İşlem **tamamen istemci tarafında**
+(`familytree.js`) gerçekleşir — sunucuda ayrıca bir headless tarayıcı veya render motoru
+çalıştırılmaz, bu da CLAUDE.md'nin "gereksiz bağımlılık oluşturulmamalı" ilkesine uygundur.
+
+Üç format ortak bir `buildExportSvg()` fonksiyonunu paylaşır (bağımsız bir `<svg>` içine
+başlık/tarih ile birlikte tam içeriği kopyalar, fotoğrafları base64 gömer). `exportSvgFile()`
+bu SVG'yi doğrudan dosya olarak indirir (en sadık/vektörel sonuç, Illustrator/Inkscape'te
+düzenlenebilir). `exportPng()` ve `exportPdf()` ise aynı SVG'yi `svgToCanvas()` ile
+rasterize edip sırasıyla PNG/JPEG olarak indirir (bkz. aşağıdaki font bulgusu — PDF için
+JPEG kullanılır, PNG dışa aktarma kendi başına bu soruna takılmaz çünkü jsPDF hiç devreye
+girmez).
 
 **Teknik yaklaşım ve önemli bir bulgu:** İlk denemede D3 SVG'sini doğrudan `svg2pdf.js` ile
 jsPDF'e gömülü bir TrueType font (Noto Sans) kullanarak vektör metin olarak aktarmayı
@@ -1678,10 +1686,11 @@ kendisiydi). Bu nedenle mimari değiştirildi:
    verimsizlik); JPEG ile nihai PDF ~80 KB civarında kalıyor.
 
 Bu üç noktadan biri atlanırsa (jsPDF metin embedding'e geri dönülürse, fotoğraf inlining
-kaldırılırsa, ya da PNG'ye geri dönülürse) sırasıyla: Türkçe karakter bozulması, kayıp
-fotoğraflar veya aşırı büyük dosya boyutu problemleri geri gelir — bu üçü de gerçek
-tarayıcıda (Playwright ile ekran görüntüsü + `pdftoppm` ile PDF'i görsel olarak render
-ederek) doğrulanmış, tesadüfi değil tekrar üretilebilir bulgulardır.
+kaldırılırsa — bu PNG/SVG dışa aktarmayı da etkiler, sadece PDF'e özgü değildir — ya da
+PDF'de PNG formatına geri dönülürse) sırasıyla: Türkçe karakter bozulması, kayıp fotoğraflar
+veya aşırı büyük dosya boyutu problemleri geri gelir — bu üçü de gerçek tarayıcıda
+(Playwright ile ekran görüntüsü/indirme yakalama + `pdftoppm` ile PDF'i görsel olarak
+render ederek) doğrulanmış, tesadüfi değil tekrar üretilebilir bulgulardır.
 
 Kütüphane: yalnızca `jspdf` (UMD, yerel barındırılan `wwwroot/lib/jspdf/jspdf.umd.min.js`);
 `svg2pdf.js` ve özel font dosyaları artık kullanılmadığından depoda tutulmaz.
