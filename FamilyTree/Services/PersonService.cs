@@ -224,7 +224,7 @@ public class PersonService : IPersonService
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
 
-        var baseQuery = _context.Persons.AsNoTracking().Include(p => p.Anne).Include(p => p.Baba).AsQueryable();
+        var baseQuery = _context.Persons.AsNoTracking().Include(p => p.Anne).Include(p => p.Baba).Include(p => p.Sulale).AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(query))
         {
@@ -532,6 +532,8 @@ public class PersonService : IPersonService
         AnneAdSoyad = p.Anne == null ? null : $"{p.Anne.Ad} {p.Anne.Soyad}",
         BabaAdSoyad = p.Baba == null ? null : $"{p.Baba.Ad} {p.Baba.Soyad}",
         Rol = rol,
+        SulaleId = p.SulaleId,
+        SulaleAdi = p.Sulale?.Ad,
     };
 
     private static string? MaskTc(string? tc)

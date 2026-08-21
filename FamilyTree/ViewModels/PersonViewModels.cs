@@ -13,6 +13,8 @@ public class PersonListItemViewModel
     public string? AnneAdSoyad { get; set; }
     public string? BabaAdSoyad { get; set; }
     public string? PrimaryPhotoPath { get; set; }
+    public int? SulaleId { get; set; }
+    public string? SulaleAdi { get; set; }
 
     /// <summary>Bu kişinin merkez kişiye göre akrabalık etiketi (ör. "Dede (Anne tarafı)"). Sadece bazı listelerde kullanılır.</summary>
     public string? Rol { get; set; }

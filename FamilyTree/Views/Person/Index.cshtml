@@ -82,6 +82,7 @@ else
                 <th>Ölüm</th>
                 <th>Anne</th>
                 <th>Baba</th>
+                <th>Sülale</th>
                 <th></th>
             </tr>
         </thead>
@@ -94,6 +95,16 @@ else
                     <td>@(p.OlumTarihi?.ToString("dd.MM.yyyy") ?? "-")</td>
                     <td>@(p.AnneAdSoyad ?? "-")</td>
                     <td>@(p.BabaAdSoyad ?? "-")</td>
+                    <td>
+                        @if (p.SulaleId.HasValue)
+                        {
+                            <a asp-action="Index" asp-route-sulaleId="@p.SulaleId">@p.SulaleAdi</a>
+                        }
+                        else
+                        {
+                            @:-
+                        }
+                    </td>
                     <td class="text-end">
                         <a asp-action="Details" asp-route-id="@p.Id" class="btn btn-sm btn-outline-primary">Detay</a>
                         @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
