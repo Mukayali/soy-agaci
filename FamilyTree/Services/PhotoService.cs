@@ -26,7 +26,7 @@ public class PhotoService : IPhotoService
         _environment = environment;
     }
 
-    public async Task<PhotoUploadResult> SavePhotoAsync(int personId, IFormFile file, bool isPrimary)
+    public async Task<PhotoUploadResult> SavePhotoAsync(int? personId, IFormFile file, bool isPrimary)
     {
         if (file.Length == 0)
         {
@@ -50,10 +50,13 @@ public class PhotoService : IPhotoService
             return new PhotoUploadResult { Success = false, ErrorMessage = "Dosya içeriği beklenen resim formatıyla eşleşmiyor." };
         }
 
-        var personExists = await _context.Persons.AnyAsync(p => p.Id == personId);
-        if (!personExists)
+        if (personId.HasValue)
         {
-            return new PhotoUploadResult { Success = false, ErrorMessage = "Kişi bulunamadı." };
+            var personExists = await _context.Persons.AnyAsync(p => p.Id == personId.Value);
+            if (!personExists)
+            {
+                return new PhotoUploadResult { Success = false, ErrorMessage = "Kişi bulunamadı." };
+            }
         }
 
         var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "persons");
@@ -67,7 +70,8 @@ public class PhotoService : IPhotoService
             await file.CopyToAsync(stream);
         }
 
-        var makesPrimary = isPrimary || !await _context.PersonPhotos.AnyAsync(p => p.PersonId == personId);
+        var makesPrimary = personId.HasValue &&
+            (isPrimary || !await _context.PersonPhotos.AnyAsync(p => p.PersonId == personId));
 
         if (makesPrimary)
         {
@@ -94,6 +98,29 @@ public class PhotoService : IPhotoService
         await _context.SaveChangesAsync();
 
         return new PhotoUploadResult { Success = true, Photo = photo };
+    }
+
+    public async Task<bool> AssignToPersonAsync(int photoId, int personId)
+    {
+        var photo = await _context.PersonPhotos.FindAsync(photoId);
+        if (photo == null)
+        {
+            return false;
+        }
+
+        var personExists = await _context.Persons.AnyAsync(p => p.Id == personId);
+        if (!personExists)
+        {
+            return false;
+        }
+
+        photo.PersonId = personId;
+
+        var hasPrimary = await _context.PersonPhotos.AnyAsync(p => p.PersonId == personId && p.IsPrimary);
+        photo.IsPrimary = !hasPrimary;
+
+        await _context.SaveChangesAsync();
+        return true;
     }
 
     public async Task<bool> DeletePhotoAsync(int photoId)

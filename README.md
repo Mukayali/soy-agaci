@@ -10,6 +10,10 @@ Mimari kararlar ve geliştirme kuralları için bkz. [CLAUDE.md](./CLAUDE.md).
 - **Aile ilişkileri**: anne/baba (self-referencing FK), eş (`SpouseRelationship`), kardeş/torun/yeğen otomatik hesaplama
 - **Döngü koruması**: bir kişinin kendi soyundan birini anne/baba olarak seçmesi engellenir
 - **Fotoğraf yönetimi**: kişi başına çoklu fotoğraf, MIME/imza doğrulamalı güvenli yükleme, ana fotoğraf seçimi
+- **Fotoğraf galerisi** (`/Photos`, ana sayfadaki "Toplam Fotoğraf" kartından erişilir): tüm
+  fotoğrafları kişiye göre gruplayarak listeler; kişi seçmeden yüklenen fotoğraflar ayrı bir
+  "İlişkilendirilmemiş Fotoğraflar" bölümünde gösterilir ve sonradan bir kişiye atanabilir
+  (Admin/Editor). Her fotoğraf buradan da silinebilir.
 - **TC Kimlik No**: opsiyonel, benzersiz, detay sayfasında maskelenerek gösterilir
 - **AJAX kişi arama**: anne/baba/eş seçiminde canlı arama (`/api/person/search`)
 - **Soy ağacı görselleştirmesi (D3.js)**: `/FamilyTree/{id}` — merkez kişiyi baz alan, zoom/pan destekli
@@ -136,7 +140,7 @@ Faz 1-6'nın tamamı tamamlandı — kalan işler artık CLAUDE.md Bölüm 50'de
 
 ```text
 FamilyTree/
-├── Controllers/     # Person, PersonApi, FamilyTree, FamilyTreeApi, Account, Users, AuditLog, Backup, Gedcom, Home
+├── Controllers/     # Person, PersonApi, FamilyTree, FamilyTreeApi, Account, Users, AuditLog, Backup, Gedcom, Photos, Home
 ├── Models/           # Person, PersonPhoto, SpouseRelationship, ApplicationUser, AuditLog, Gender
 ├── Data/              # ApplicationDbContext (IdentityDbContext<ApplicationUser>)
 ├── Services/         # IPersonService / IPhotoService / IFamilyTreeService / IAuditLogService / IBackupService / IGedcomService

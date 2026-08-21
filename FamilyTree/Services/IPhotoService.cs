@@ -12,9 +12,13 @@ public class PhotoUploadResult
 
 public interface IPhotoService
 {
-    Task<PhotoUploadResult> SavePhotoAsync(int personId, IFormFile file, bool isPrimary);
+    /// <summary>personId null verilirse fotoğraf "ilişkilendirilmemiş" olarak kaydedilir.</summary>
+    Task<PhotoUploadResult> SavePhotoAsync(int? personId, IFormFile file, bool isPrimary);
 
     Task<bool> DeletePhotoAsync(int photoId);
 
     Task SetPrimaryAsync(int personId, int photoId);
+
+    /// <summary>İlişkilendirilmemiş bir fotoğrafı bir kişiye atar.</summary>
+    Task<bool> AssignToPersonAsync(int photoId, int personId);
 }

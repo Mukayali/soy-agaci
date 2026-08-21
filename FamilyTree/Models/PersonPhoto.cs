@@ -6,7 +6,11 @@ public class PersonPhoto
 {
     public int Id { get; set; }
 
-    public int PersonId { get; set; }
+    /// <summary>
+    /// Null olabilir: bir kişiye henüz atanmamış ("ilişkilendirilmemiş") fotoğrafları
+    /// (fotoğraf galerisinden kişi seçmeden yüklenenler) temsil eder.
+    /// </summary>
+    public int? PersonId { get; set; }
 
     [Required]
     [MaxLength(255)]
@@ -23,5 +27,5 @@ public class PersonPhoto
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
-    public Person Person { get; set; } = null!;
+    public Person? Person { get; set; }
 }

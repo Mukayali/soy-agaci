@@ -317,6 +317,30 @@ Kullanıcının yüklediği dosya adı doğrudan kullanılmamalıdır.
 
 Fotoğraf dosya yolu/adı veritabanında `VARCHAR(255)` veya `VARCHAR(512)` olarak saklanmalıdır; GUID'in kendisi ayrı bir kolon olarak tutulmayacaksa dosya adının içine gömülmesi yeterlidir.
 
+## 8.1. Fotoğraf Galerisi ve İlişkilendirilmemiş Fotoğraflar
+
+**Durum: Uygulandı.** `PersonPhoto.PersonId` **opsiyoneldir** (`int?`) — bir fotoğraf, herhangi
+bir kişiye atanmadan da (galeriye kişi seçmeden doğrudan yüklenerek) var olabilir. Ana sayfadaki
+"Toplam Fotoğraf" kartı `/Photos` (Fotoğraf Galerisi) sayfasına bağlanır; bu sayfa tüm fotoğrafları
+kişiye göre gruplanmış listeler ve `PersonId`'si boş olanları ayrı bir "İlişkilendirilmemiş
+Fotoğraflar" bölümünde gösterir. Admin/Editor buradan kişi seçmeden fotoğraf yükleyebilir,
+ilişkilendirilmemiş bir fotoğrafı sonradan bir kişiye atayabilir (`IPhotoService.AssignToPersonAsync`)
+ve herhangi bir fotoğrafı silebilir.
+
+`PersonPhoto` → `Person` ilişkisi `DeleteBehavior.SetNull` olarak tanımlanmıştır: bir kişi
+(gerçek/hard) silinirse fotoğrafları kaybolmaz, otomatik olarak ilişkilendirilmemiş hale gelir.
+
+**Önemli bir bulgu — Include + global query filter:** `Person` üzerindeki "silinmemiş" global
+query filtresi (`HasQueryFilter(p => !p.IsDeleted)`), EF Core'da varsayılan olarak `.Include()`
+edilen gezinme özelliklerine de uygulanır. `/Photos` sayfasının sorgusu bu yüzden başlangıçta
+yumuşak silinmiş bir kişiye ait fotoğrafların `Person` alanını sessizce `null` getiriyor, bu da
+fotoğrafın hem kişi grubunda hem "ilişkilendirilmemiş" listesinde **hiç görünmemesine** yol
+açıyordu (toplam sayı doğruydu ama fotoğraf hiçbir yerde listelenmiyordu). Düzeltme:
+`PhotosController.Index` artık `.IgnoreQueryFilters()` kullanıp silinmiş kişileri ayrıca
+`PersonIsDeleted` bayrağıyla işaretliyor ve arayüzde "Silinmiş Kişi" rozetiyle gösteriyor
+(detay sayfasına bağlantı vermeden, çünkü o sayfa filtreli sorgu kullandığından 404 döner).
+Bu, gerçek kullanıcı verisiyle test sırasında bulunup düzeltilen gerçek bir hataydı.
+
 ---
 
 # 9. Anne-Baba İlişkisi

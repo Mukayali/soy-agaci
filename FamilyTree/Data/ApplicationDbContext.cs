@@ -49,10 +49,12 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
         modelBuilder.Entity<PersonPhoto>(entity =>
         {
+            entity.HasIndex(pp => pp.PersonId);
+
             entity.HasOne(pp => pp.Person)
                 .WithMany(p => p.Photos)
                 .HasForeignKey(pp => pp.PersonId)
-                .OnDelete(DeleteBehavior.Cascade);
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<SpouseRelationship>(entity =>

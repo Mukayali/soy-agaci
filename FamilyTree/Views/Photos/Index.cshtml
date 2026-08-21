@@ -1,0 +1,167 @@
+@model PhotoGalleryViewModel
+@{
+    ViewData["Title"] = "Fotoğraflar";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Fotoğraflar <span class="text-muted fs-6">(@Model.TotalPhotoCount fotoğraf)</span></h2>
+</div>
+
+@if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">Fotoğraf Yükle</h5>
+            <p class="text-muted">
+                Kişi seçmeden doğrudan fotoğraf yükleyebilirsiniz; yüklenen fotoğraflar
+                "İlişkilendirilmemiş Fotoğraflar" altında görünür ve daha sonra bir kişiye
+                atanabilir.
+            </p>
+            <form asp-action="Upload" method="post" enctype="multipart/form-data" class="d-flex gap-2">
+                <input type="file" name="photos" class="form-control" multiple accept=".jpg,.jpeg,.png,.webp" required />
+                <button type="submit" class="btn btn-primary text-nowrap">Yükle</button>
+            </form>
+        </div>
+    </div>
+}
+
+@if (!Model.Groups.Any() && !Model.UnassignedPhotos.Any())
+{
+    <p class="text-muted">Henüz hiç fotoğraf yüklenmemiş.</p>
+}
+
+@foreach (var group in Model.Groups)
+{
+    <div class="card mb-4">
+        <div class="card-body">
+            <h5 class="card-title">
+                @if (group.PersonIsDeleted)
+                {
+                    <span class="text-muted">@group.PersonName</span>
+                    <span class="badge bg-secondary">Silinmiş Kişi</span>
+                }
+                else
+                {
+                    <a asp-controller="Person" asp-action="Details" asp-route-id="@group.PersonId">@group.PersonName</a>
+                }
+                <span class="text-muted fs-6">(@group.Photos.Count)</span>
+            </h5>
+            <div class="row row-cols-2 row-cols-md-4 row-cols-lg-6 g-3">
+                @foreach (var photo in group.Photos)
+                {
+                    <div class="col">
+                        <div class="card h-100">
+                            <img src="@photo.FilePath" class="card-img-top" style="height:140px;object-fit:cover;" alt="@group.PersonName fotoğrafı" />
+                            <div class="card-body p-2 text-center">
+                                @if (photo.IsPrimary)
+                                {
+                                    <span class="badge bg-success">Ana Fotoğraf</span>
+                                }
+                                @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+                                {
+                                    <form asp-action="Delete" method="post" class="mt-1" onsubmit="return confirm('Bu fotoğrafı silmek istediğinizden emin misiniz?');">
+                                        <input type="hidden" name="photoId" value="@photo.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Sil</button>
+                                    </form>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@if (Model.UnassignedPhotos.Any())
+{
+    <div class="card mb-4 border-warning">
+        <div class="card-body">
+            <h5 class="card-title">İlişkilendirilmemiş Fotoğraflar <span class="text-muted fs-6">(@Model.UnassignedPhotos.Count)</span></h5>
+            <p class="text-muted">Bu fotoğraflar henüz bir kişiye atanmamış.</p>
+            <div class="row row-cols-2 row-cols-md-4 row-cols-lg-6 g-3">
+                @foreach (var photo in Model.UnassignedPhotos)
+                {
+                    <div class="col">
+                        <div class="card h-100">
+                            <img src="@photo.FilePath" class="card-img-top" style="height:140px;object-fit:cover;" alt="İlişkilendirilmemiş fotoğraf" />
+                            <div class="card-body p-2">
+                                @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+                                {
+                                    <form asp-action="Assign" method="post" class="position-relative mb-2">
+                                        <input type="hidden" name="photoId" value="@photo.Id" />
+                                        <input type="text" id="personSearch-@photo.Id" class="form-control form-control-sm mb-1" placeholder="Kişi ara..." autocomplete="off" />
+                                        <input type="hidden" name="personId" id="personId-@photo.Id" />
+                                        <div id="personResults-@photo.Id" class="list-group position-absolute w-100" style="z-index:1000;"></div>
+                                        <button type="submit" class="btn btn-sm btn-outline-primary w-100">Kişiye Ata</button>
+                                    </form>
+                                    <form asp-action="Delete" method="post" onsubmit="return confirm('Bu fotoğrafı silmek istediğinizden emin misiniz?');">
+                                        <input type="hidden" name="photoId" value="@photo.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger w-100">Sil</button>
+                                    </form>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        function setupPersonSearch(inputId, resultsId, hiddenId) {
+            const input = document.getElementById(inputId);
+            const results = document.getElementById(resultsId);
+            const hidden = document.getElementById(hiddenId);
+            if (!input) return;
+            let timeoutId;
+
+            input.addEventListener('input', function () {
+                hidden.value = '';
+                clearTimeout(timeoutId);
+                const q = input.value.trim();
+                if (q.length < 2) {
+                    results.innerHTML = '';
+                    return;
+                }
+                timeoutId = setTimeout(function () {
+                    fetch('/api/person/search?q=' + encodeURIComponent(q))
+                        .then(r => r.json())
+                        .then(data => {
+                            results.innerHTML = '';
+                            data.forEach(function (item) {
+                                const el = document.createElement('button');
+                                el.type = 'button';
+                                el.className = 'list-group-item list-group-item-action';
+                                el.textContent = item.adSoyad + (item.dogumYili ? ' (' + item.dogumYili + ')' : '');
+                                el.addEventListener('click', function () {
+                                    input.value = item.adSoyad;
+                                    hidden.value = item.id;
+                                    results.innerHTML = '';
+                                });
+                                results.appendChild(el);
+                            });
+                        });
+                }, 250);
+            });
+        }
+
+        document.addEventListener('click', function (e) {
+            document.querySelectorAll('[id^="personSearch-"]').forEach(function (input) {
+                if (e.target !== input) {
+                    var results = document.getElementById(input.id.replace('personSearch-', 'personResults-'));
+                    if (results) {
+                        results.innerHTML = '';
+                    }
+                }
+            });
+        });
+
+        @foreach (var photo in Model.UnassignedPhotos)
+        {
+            @:setupPersonSearch('personSearch-@photo.Id', 'personResults-@photo.Id', 'personId-@photo.Id');
+        }
+    </script>
+}
