@@ -346,6 +346,164 @@
         svg.attr('width', wrapper.clientWidth).attr('height', wrapper.clientHeight);
     }
 
+    async function inlinePhotoImages(svgRoot) {
+        var images = Array.from(svgRoot.querySelectorAll('image')).filter(function (img) {
+            var href = img.getAttribute('href');
+            return href && !href.startsWith('data:');
+        });
+
+        await Promise.all(images.map(async function (img) {
+            try {
+                var href = img.getAttribute('href');
+                var res = await fetch(href);
+                var blob = await res.blob();
+                var dataUrl = await new Promise(function (resolve, reject) {
+                    var reader = new FileReader();
+                    reader.onload = function () { resolve(reader.result); };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(blob);
+                });
+                img.setAttribute('href', dataUrl);
+            } catch (err) {
+                img.setAttribute('href', null);
+                img.removeAttribute('href');
+            }
+        }));
+    }
+
+    async function exportPdf() {
+        var nodes = Array.from(state.nodesById.values());
+        if (nodes.length === 0) {
+            return;
+        }
+
+        if (typeof jspdf === 'undefined' || typeof jspdf.jsPDF === 'undefined') {
+            alert('PDF oluşturma kütüphanesi yüklenemedi.');
+            return;
+        }
+
+        var exportBtn = document.getElementById('exportPdfBtn');
+        var originalLabel = exportBtn.textContent;
+        exportBtn.disabled = true;
+        exportBtn.textContent = 'Hazırlanıyor...';
+
+        try {
+            var padding = 40;
+            var headerHeight = 70;
+            var footerHeight = 30;
+
+            var minX = d3.min(nodes, function (d) { return d.x; });
+            var maxX = d3.max(nodes, function (d) { return d.x; }) + CARD_W;
+            var minY = d3.min(nodes, function (d) { return d.y; });
+            var maxY = d3.max(nodes, function (d) { return d.y; }) + CARD_H;
+
+            var contentW = maxX - minX;
+            var contentH = maxY - minY;
+            var pageW = contentW + padding * 2;
+            var pageH = contentH + padding * 2 + headerHeight + footerHeight;
+
+            var exportSvg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            exportSvg.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+            exportSvg.setAttribute('width', pageW);
+            exportSvg.setAttribute('height', pageH);
+            exportSvg.setAttribute('viewBox', '0 0 ' + pageW + ' ' + pageH);
+            exportSvg.setAttribute('font-family', 'Arial, Helvetica, sans-serif');
+
+            var bg = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+            bg.setAttribute('x', 0);
+            bg.setAttribute('y', 0);
+            bg.setAttribute('width', pageW);
+            bg.setAttribute('height', pageH);
+            bg.setAttribute('fill', '#ffffff');
+            exportSvg.appendChild(bg);
+
+            var contentGroup = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+            contentGroup.setAttribute('transform', 'translate(' + (padding - minX) + ',' + (headerHeight + padding - minY) + ')');
+            contentGroup.appendChild(linksLayer.node().cloneNode(true));
+            contentGroup.appendChild(nodesLayer.node().cloneNode(true));
+            exportSvg.appendChild(contentGroup);
+
+            // Fotoğraf <image> öğelerini base64 olarak SVG içine göm; aksi halde SVG bir
+            // <img>/blob URL üzerinden rasterize edilirken iç içe ağ isteklerinin zamanlaması
+            // tarayıcıda güvenilir şekilde beklenmeyebilir ve fotoğraflar boş kalabilir.
+            await inlinePhotoImages(exportSvg);
+
+            var centerNode = state.currentPersonId ? state.nodesById.get(state.currentPersonId) : null;
+            var title = 'Soy Ağacı' + (centerNode ? ' - ' + centerNode.name : '');
+
+            var titleEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            titleEl.setAttribute('x', padding);
+            titleEl.setAttribute('y', 34);
+            titleEl.setAttribute('font-size', 20);
+            titleEl.setAttribute('font-weight', 'bold');
+            titleEl.setAttribute('fill', '#212121');
+            titleEl.textContent = title;
+            exportSvg.appendChild(titleEl);
+
+            var dateEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            dateEl.setAttribute('x', padding);
+            dateEl.setAttribute('y', pageH - 12);
+            dateEl.setAttribute('font-size', 10);
+            dateEl.setAttribute('fill', '#757575');
+            dateEl.textContent = 'Oluşturma tarihi: ' + new Date().toLocaleDateString('tr-TR');
+            exportSvg.appendChild(dateEl);
+
+            // Metni jsPDF'in özel font gömme mekanizmasına (Türkçe karakterlerde hatalı
+            // glif üretebiliyor) bırakmak yerine, SVG'yi tarayıcının kendi doğru font
+            // render motoruyla bir canvas'a çizip JPEG olarak PDF'e gömüyoruz
+            // (jsPDF'in PNG kodlayıcısı aynı görüntüyü onlarca kat daha büyük üretiyor).
+            var scale = 2; // baskı kalitesi için 2x çözünürlük
+            var svgString = new XMLSerializer().serializeToString(exportSvg);
+            var svgBlob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+            var svgUrl = URL.createObjectURL(svgBlob);
+
+            var img = new Image();
+            var imageLoaded = new Promise(function (resolve, reject) {
+                img.onload = resolve;
+                img.onerror = reject;
+            });
+            img.src = svgUrl;
+            await imageLoaded;
+
+            var canvas = document.createElement('canvas');
+            canvas.width = pageW * scale;
+            canvas.height = pageH * scale;
+            var ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.scale(scale, scale);
+            ctx.drawImage(img, 0, 0, pageW, pageH);
+            URL.revokeObjectURL(svgUrl);
+
+            var jpgDataUrl = canvas.toDataURL('image/jpeg', 0.95);
+
+            var doc = new jspdf.jsPDF({
+                orientation: pageW > pageH ? 'landscape' : 'portrait',
+                unit: 'px',
+                format: [pageW, pageH],
+                hotfixes: ['px_scaling'],
+                compress: true,
+            });
+
+            doc.addImage(jpgDataUrl, 'JPEG', 0, 0, pageW, pageH, undefined, 'FAST');
+
+            var fileName = 'soy-agaci-' + (centerNode ? centerNode.name.replace(/\s+/g, '-') : 'agaci') + '.pdf';
+            doc.save(fileName);
+
+            fetch('/api/familytree/log-export', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ personId: state.currentPersonId, format: 'pdf' }),
+            }).catch(function () { /* günlükleme başarısız olursa dışa aktarmayı engelleme */ });
+        } catch (err) {
+            console.error(err);
+            alert('PDF oluşturulurken bir hata oluştu.');
+        } finally {
+            exportBtn.disabled = false;
+            exportBtn.textContent = originalLabel;
+        }
+    }
+
     async function loadBaseTree(id, pushState) {
         setLoading(true);
         try {
@@ -414,6 +572,7 @@
     document.addEventListener('fullscreenchange', function () {
         setTimeout(function () { resizeSvg(); fitToView(false); }, 100);
     });
+    document.getElementById('exportPdfBtn').addEventListener('click', exportPdf);
 
     document.getElementById('showGrandparentsBtn').addEventListener('click', function () {
         expand('grandparents', 'grandparents', 'showGrandparentsBtn');

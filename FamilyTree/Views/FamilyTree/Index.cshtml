@@ -25,6 +25,7 @@ else
                 <button type="button" id="zoomOutBtn" class="btn btn-outline-secondary" title="Uzaklaştır">−</button>
                 <button type="button" id="centerBtn" class="btn btn-outline-secondary" title="Ortala">Ortala</button>
                 <button type="button" id="fullscreenBtn" class="btn btn-outline-secondary" title="Tam Ekran">Tam Ekran</button>
+                <button type="button" id="exportPdfBtn" class="btn btn-outline-secondary" title="PDF Olarak İndir">PDF İndir</button>
             </div>
 
             <div class="btn-group" role="group" aria-label="Genişlet">
@@ -52,5 +53,6 @@ else
 
 @section Scripts {
     <script src="~/lib/d3/d3.v7.min.js"></script>
+    <script src="~/lib/jspdf/jspdf.umd.min.js"></script>
     <script src="~/js/familytree.js" asp-append-version="true"></script>
 }

@@ -1614,8 +1614,8 @@ Mimari aşağıdaki özelliklerin eklenmesine uygun olmalıdır:
 * Aile kronolojisi
 * Harita üzerinde yaşam yerleri
 * ~~GEDCOM import/export~~ (uygulandı, bkz. Bölüm 51)
-* PDF soy ağacı
-* PNG/SVG soy ağacı dışa aktarma
+* ~~PDF soy ağacı dışa aktarma~~ (uygulandı, bkz. Bölüm 51.1 — `/FamilyTree` sayfasında "PDF İndir")
+* PNG/SVG soy ağacı dışa aktarma (PDF için kullanılan JPEG rasterleştirme yaklaşımı ileride buna da uyarlanabilir)
 * ~~Excel/CSV dışa aktarma~~ (CSV kısmı uygulandı — `PersonController.ExportCsv`; Excel formatı henüz yok)
 * Gelişmiş arama
 * Aile bazlı kullanıcı yetkilendirmesi
@@ -1644,6 +1644,47 @@ Bu tasarım Bölüm 49'daki "temel ilişkilerden türet" prensibiyle uyumludur: 
 Event/Place/Source gibi ek kavramları şu an desteklenmiyor (Person açıklama alanına not
 olarak düşülüyor), ancak veri modeli bunların ileride ayrı tablolar olarak eklenmesine
 engel olmayacak şekilde tasarlanmıştır.
+
+---
+
+# 51.1. PDF Soy Ağacı Dışa Aktarma
+
+**Durum: Uygulandı.** `/FamilyTree/{id}` sayfasındaki "PDF İndir" butonu, o an ekranda
+yüklü olan tüm soy ağacını (kullanıcının açtığı tüm genişletmeler dahil, mevcut zoom/pan
+durumundan bağımsız olarak tam içerik) bir PDF dosyası olarak indirir. İşlem **tamamen
+istemci tarafında** (`familytree.js`, `exportPdf()`) gerçekleşir — sunucuda ayrıca bir
+headless tarayıcı veya PDF render motoru çalıştırılmaz, bu da CLAUDE.md'nin "gereksiz
+bağımlılık oluşturulmamalı" ilkesine uygundur.
+
+**Teknik yaklaşım ve önemli bir bulgu:** İlk denemede D3 SVG'sini doğrudan `svg2pdf.js` ile
+jsPDF'e gömülü bir TrueType font (Noto Sans) kullanarak vektör metin olarak aktarmayı
+denedik. Bu yaklaşım **Türkçe karakterlerde (İ, ş, Ş, ğ, ı) sessizce yanlış glif üretti**
+(ör. "İsmail" → "0smail", "Ağacı" → "Aac1") — jsPDF v2.5.2'nin özel TTF font gömme
+mekanizmasında bu belirli Unicode aralığıyla ilgili bir hata olduğu doğrulandı (hem tam font
+hem alt kümelenmiş font ile aynı hata tekrarlandı, yani sorun font subsetting değil jsPDF'in
+kendisiydi). Bu nedenle mimari değiştirildi:
+
+1. Mevcut D3 SVG içeriği (linksLayer + nodesLayer) klonlanıp bağımsız bir `<svg>` içine, tam
+   içerik sınırlarını kapsayacak şekilde (mevcut ekran zoom/pan'inden bağımsız) yerleştirilir.
+   Kişi fotoğrafları (`<image href="/uploads/...">`) base64 `data:` URI'lerine önceden
+   gömülür — aksi halde SVG bir `blob:` URL üzerinden `<img>` ile rasterize edilirken iç içe
+   ağ isteklerinin zamanlaması tarayıcıda güvenilir şekilde beklenmeyip fotoğraflar boş
+   kalabiliyordu (bu da test sırasında bulunup düzeltilen ikinci bir hataydı).
+2. Bu SVG, tarayıcının **kendi** (doğru) font render motoruyla bir `<canvas>`'a çizilir
+   (2x çözünürlük, baskı kalitesi için).
+3. Canvas, `image/jpeg` (kalite 0.95) olarak dışa aktarılıp jsPDF'e `addImage()` ile tek bir
+   resim olarak gömülür. **PNG değil JPEG kullanılmalı:** aynı canvas içeriği ham PNG olarak
+   ~70 KB iken, jsPDF'in PNG kodlayıcısından geçince ~4 MB'a şişiyor (jsPDF'e özgü bir
+   verimsizlik); JPEG ile nihai PDF ~80 KB civarında kalıyor.
+
+Bu üç noktadan biri atlanırsa (jsPDF metin embedding'e geri dönülürse, fotoğraf inlining
+kaldırılırsa, ya da PNG'ye geri dönülürse) sırasıyla: Türkçe karakter bozulması, kayıp
+fotoğraflar veya aşırı büyük dosya boyutu problemleri geri gelir — bu üçü de gerçek
+tarayıcıda (Playwright ile ekran görüntüsü + `pdftoppm` ile PDF'i görsel olarak render
+ederek) doğrulanmış, tesadüfi değil tekrar üretilebilir bulgulardır.
+
+Kütüphane: yalnızca `jspdf` (UMD, yerel barındırılan `wwwroot/lib/jspdf/jspdf.umd.min.js`);
+`svg2pdf.js` ve özel font dosyaları artık kullanılmadığından depoda tutulmaz.
 
 ---
 

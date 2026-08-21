@@ -3,15 +3,19 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace FamilyTree.Controllers;
 
+public record LogExportRequest(int? PersonId, string? Format);
+
 [ApiController]
 [Route("api/familytree")]
 public class FamilyTreeApiController : ControllerBase
 {
     private readonly IFamilyTreeService _familyTreeService;
+    private readonly IAuditLogService _auditLogService;
 
-    public FamilyTreeApiController(IFamilyTreeService familyTreeService)
+    public FamilyTreeApiController(IFamilyTreeService familyTreeService, IAuditLogService auditLogService)
     {
         _familyTreeService = familyTreeService;
+        _auditLogService = auditLogService;
     }
 
     [HttpGet("{id:int}")]
@@ -54,5 +58,13 @@ public class FamilyTreeApiController : ControllerBase
     public async Task<IActionResult> GetCousins(int id)
     {
         return Ok(await _familyTreeService.GetCousinsAsync(id));
+    }
+
+    [HttpPost("log-export")]
+    public async Task<IActionResult> LogExport([FromBody] LogExportRequest request)
+    {
+        var format = string.IsNullOrWhiteSpace(request.Format) ? "bilinmiyor" : request.Format;
+        await _auditLogService.LogAsync($"Soy ağacı {format.ToUpperInvariant()} olarak dışa aktarıldı", "Person", request.PersonId);
+        return NoContent();
     }
 }
