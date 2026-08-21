@@ -311,12 +311,12 @@ public class PersonController : Controller
     public IActionResult CsvImportTemplate()
     {
         var sb = new StringBuilder();
-        sb.AppendLine("TCKimlikNo,Ad,Soyad,Cinsiyet,DogumTarihi,OlumTarihi,AnneTC,BabaTC");
-        sb.AppendLine("11111111110,Hasan,Demir,Erkek,1940-01-15,2015-06-20,,");
-        sb.AppendLine("22222222220,Fatma,Demir,Kadin,1943-03-10,,,");
-        sb.AppendLine("33333333330,Mehmet,Demir,Erkek,1965-07-01,,22222222220,11111111110");
-        sb.AppendLine("44444444440,Ayşe,Kaya,Kadin,1968-09-05,,,");
-        sb.AppendLine("55555555550,Ali,Demir,Erkek,1990-05-05,,44444444440,33333333330");
+        sb.AppendLine("TCKimlikNo,Ad,Soyad,Cinsiyet,DogumTarihi,OlumTarihi,AnneTC,BabaTC,DogumYeri,SulaleId");
+        sb.AppendLine("11111111110,Hasan,Demir,Erkek,1940-01-15,2015-06-20,,,Erzurum,");
+        sb.AppendLine("22222222220,Fatma,Demir,Kadin,1943-03-10,,,,Erzurum,");
+        sb.AppendLine("33333333330,Mehmet,Demir,Erkek,1965-07-01,,22222222220,11111111110,Erzurum,");
+        sb.AppendLine("44444444440,Ayşe,Kaya,Kadin,1968-09-05,,,,Ankara,");
+        sb.AppendLine("55555555550,Ali,Demir,Erkek,1990-05-05,,44444444440,33333333330,İstanbul,");
 
         var utf8Bom = Encoding.UTF8.GetPreamble();
         var content = Encoding.UTF8.GetBytes(sb.ToString());

@@ -1724,10 +1724,19 @@ Kütüphane: yalnızca `jspdf` (UMD, yerel barındırılan `wwwroot/lib/jspdf/js
 # 51.2. CSV Toplu Kişi İçe Aktarma
 
 **Durum: Uygulandı.** `/Person` (Kişiler) sayfasındaki "CSV İçe Aktar" paneli (Admin/Editor),
-`TCKimlikNo, Ad, Soyad, Cinsiyet, DogumTarihi, OlumTarihi, AnneTC, BabaTC` sütunlarını içeren
-bir CSV dosyasından toplu kişi ekler. Aynı sayfadaki "Örnek Şablon İndir" bağlantısı
-(`PersonController.CsvImportTemplate`) doğru sütun sırasını ve gerçek olmayan (açıkça
-tekrarlı basamaklı) örnek TC Kimlik No'lar içeren bir başlangıç dosyası sağlar.
+`TCKimlikNo, Ad, Soyad, Cinsiyet, DogumTarihi, OlumTarihi, AnneTC, BabaTC, DogumYeri, SulaleId`
+sütunlarını içeren bir CSV dosyasından toplu kişi ekler. Aynı sayfadaki "Örnek Şablon İndir"
+bağlantısı (`PersonController.CsvImportTemplate`) doğru sütun sırasını ve gerçek olmayan
+(açıkça tekrarlı basamaklı) örnek TC Kimlik No'lar içeren bir başlangıç dosyası sağlar.
+
+`DogumYeri` serbest metindir, doğrudan `Person.DogumYeri` alanına yazılır. `SulaleId`,
+kişiyi (bkz. Bölüm 51.3) mevcut bir sülaleye bağlamak için o sülalenin sayısal `Id`'sidir —
+GEDCOM/anne-baba eşleştirmesinin aksine burada bir isim eşleştirmesi **yapılmaz**, çünkü
+sülale adları CSV'de yer almaz ve isim eşleştirmesi yanlış sülaleye bağlanma riski taşırdı.
+Kullanıcı doğru Id'yi `/Sulale` sayfasındaki (Bölüm 51.3'te eklenen) Id sütunundan bulur.
+Referans verilen `SulaleId` veritabanında yoksa satır atlanmaz, yalnızca sülale ataması
+boş bırakılıp bir uyarı eklenir (diğer alanlardaki "yanlış kesinlik oluşturma yerine alanı
+boş bırak" prensibiyle tutarlı).
 
 **Anne/Baba eşleştirme mantığı:** `AnneTC`/`BabaTC` sütunları, dosyadaki başka bir satırın
 `TCKimlikNo`'suna **veya** veritabanında zaten kayıtlı bir kişinin TC'sine eşleşerek

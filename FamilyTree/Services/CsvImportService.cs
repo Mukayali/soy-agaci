@@ -35,6 +35,8 @@ public class CsvImportService : ICsvImportService
         public DateTime? OlumTarihi { get; set; }
         public string? AnneTc { get; set; }
         public string? BabaTc { get; set; }
+        public string? DogumYeri { get; set; }
+        public int? SulaleId { get; set; }
         public int? NewPersonId { get; set; }
     }
 
@@ -172,6 +174,23 @@ public class CsvImportService : ICsvImportService
                 babaTc = null;
             }
 
+            var dogumYeriRaw = Field(cells, "dogumyeri");
+            var dogumYeri = string.IsNullOrWhiteSpace(dogumYeriRaw) ? null : dogumYeriRaw.Trim();
+
+            var sulaleIdRaw = Field(cells, "sulaleid");
+            int? sulaleId = null;
+            if (!string.IsNullOrWhiteSpace(sulaleIdRaw))
+            {
+                if (int.TryParse(sulaleIdRaw.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedSulaleId))
+                {
+                    sulaleId = parsedSulaleId;
+                }
+                else
+                {
+                    result.Warnings.Add($"Satır {lineNumber}: SulaleId değeri ('{sulaleIdRaw}') sayısal değil, boş bırakıldı.");
+                }
+            }
+
             parsedRows.Add(new ParsedRow
             {
                 LineNumber = lineNumber,
@@ -183,6 +202,8 @@ public class CsvImportService : ICsvImportService
                 OlumTarihi = olum,
                 AnneTc = anneTc,
                 BabaTc = babaTc,
+                DogumYeri = dogumYeri,
+                SulaleId = sulaleId,
             });
         }
 
@@ -198,6 +219,29 @@ public class CsvImportService : ICsvImportService
             : await _context.Persons
                 .Where(p => p.TcKimlikNo != null && referencedTcs.Contains(p.TcKimlikNo))
                 .ToDictionaryAsync(p => p.TcKimlikNo!, p => p.Id);
+
+        var referencedSulaleIds = parsedRows
+            .Where(r => r.SulaleId.HasValue)
+            .Select(r => r.SulaleId!.Value)
+            .Distinct()
+            .ToList();
+
+        var existingSulaleIds = referencedSulaleIds.Count == 0
+            ? new HashSet<int>()
+            : (await _context.Sulaleler
+                .Where(s => referencedSulaleIds.Contains(s.Id))
+                .Select(s => s.Id)
+                .ToListAsync())
+                .ToHashSet();
+
+        foreach (var row in parsedRows)
+        {
+            if (row.SulaleId.HasValue && !existingSulaleIds.Contains(row.SulaleId.Value))
+            {
+                result.Warnings.Add($"Satır {row.LineNumber}: SulaleId {row.SulaleId.Value} bulunamadı, sülale ataması yapılmadı.");
+                row.SulaleId = null;
+            }
+        }
 
         await using var transaction = await _context.Database.BeginTransactionAsync();
 
@@ -221,6 +265,8 @@ public class CsvImportService : ICsvImportService
                     Cinsiyet = row.Cinsiyet,
                     DogumTarihi = row.DogumTarihi,
                     OlumTarihi = row.OlumTarihi,
+                    DogumYeri = row.DogumYeri,
+                    SulaleId = row.SulaleId,
                     CreatedAt = DateTime.UtcNow,
                 };
 
@@ -319,6 +365,8 @@ public class CsvImportService : ICsvImportService
                 "olumtarihi" or "olumtarih" => "olumtarihi",
                 "annetc" or "annetckimlikno" or "anneno" => "annetc",
                 "babatc" or "babatckimlikno" or "babano" => "babatc",
+                "dogumyeri" => "dogumyeri",
+                "sulaleid" or "sulale" => "sulaleid",
                 _ => null,
             };
 

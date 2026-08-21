@@ -37,12 +37,15 @@
         <div class="card card-body">
             <h5 class="card-title">CSV ile Toplu Kişi Yükleme</h5>
             <p class="text-muted">
-                Sütunlar: <code>TCKimlikNo, Ad, Soyad, Cinsiyet, DogumTarihi, OlumTarihi, AnneTC, BabaTC</code>.
+                Sütunlar: <code>TCKimlikNo, Ad, Soyad, Cinsiyet, DogumTarihi, OlumTarihi, AnneTC, BabaTC, DogumYeri, SulaleId</code>.
                 <code>Ad</code> ve <code>Soyad</code> zorunludur, diğerleri opsiyoneldir.
                 <code>AnneTC</code>/<code>BabaTC</code>, dosyadaki başka bir satırın veya sistemde zaten
                 kayıtlı bir kişinin TC Kimlik No'suna eşleşerek anne/baba ilişkisini otomatik kurar.
                 Cinsiyet için <code>Erkek</code>/<code>Kadın</code> (veya E/K) kullanın; tarihler
                 <code>yyyy-aa-gg</code> (ör. 1990-05-05) veya <code>gg.aa.yyyy</code> formatında olabilir.
+                <code>DogumYeri</code> serbest metindir. <code>SulaleId</code>, kişiyi mevcut bir sülaleye
+                bağlamak için o sülalenin numarasıdır (<a asp-controller="Sulale" asp-action="Index">Sülaleler</a>
+                sayfasındaki Id sütunundan bulunabilir); eşleşen bir sülale bulunamazsa boş bırakılır.
             </p>
             <p>
                 <a asp-action="CsvImportTemplate" class="btn btn-sm btn-outline-primary">Örnek Şablon İndir</a>
