@@ -23,4 +23,10 @@ public interface IFamilyTreeService
 
     /// <summary>Amca/dayı/hala/teyzelerin çocuklarını (kuzenleri) döndürür.</summary>
     Task<FamilyTreeGraphDto> GetCousinsAsync(int personId);
+
+    /// <summary>
+    /// Bir sülaledeki tüm kişileri, aralarındaki anne/baba/eş ilişkileriyle birlikte döndürür.
+    /// Sülale bulunamazsa null döner; üyesi yoksa boş bir graph döner.
+    /// </summary>
+    Task<FamilyTreeGraphDto?> GetBySulaleAsync(int sulaleId);
 }

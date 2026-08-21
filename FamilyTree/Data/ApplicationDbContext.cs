@@ -19,6 +19,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
+    public DbSet<Sulale> Sulaleler => Set<Sulale>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -45,6 +47,18 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany(p => p.BabaCocuklari)
                 .HasForeignKey(p => p.BabaId)
                 .OnDelete(DeleteBehavior.Restrict);
+
+            entity.HasIndex(p => p.SulaleId);
+
+            entity.HasOne(p => p.Sulale)
+                .WithMany(s => s.Uyeler)
+                .HasForeignKey(p => p.SulaleId)
+                .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<Sulale>(entity =>
+        {
+            entity.HasIndex(s => s.Ad).IsUnique();
         });
 
         modelBuilder.Entity<PersonPhoto>(entity =>

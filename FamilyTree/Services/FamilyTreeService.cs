@@ -410,6 +410,140 @@ public class FamilyTreeService : IFamilyTreeService
         return graph;
     }
 
+    public async Task<FamilyTreeGraphDto?> GetBySulaleAsync(int sulaleId)
+    {
+        var sulaleExists = await _context.Sulaleler.AsNoTracking().AnyAsync(s => s.Id == sulaleId);
+        if (!sulaleExists)
+        {
+            return null;
+        }
+
+        var members = await _context.Persons
+            .AsNoTracking()
+            .Include(p => p.Photos)
+            .Where(p => p.SulaleId == sulaleId)
+            .ToListAsync();
+
+        var graph = new FamilyTreeGraphDto();
+        if (members.Count == 0)
+        {
+            return graph;
+        }
+
+        var memberIds = members.Select(m => m.Id).ToHashSet();
+
+        var parentsOf = members.ToDictionary(
+            m => m.Id,
+            m =>
+            {
+                var parents = new List<int>();
+                if (m.AnneId.HasValue && memberIds.Contains(m.AnneId.Value))
+                {
+                    parents.Add(m.AnneId.Value);
+                }
+
+                if (m.BabaId.HasValue && memberIds.Contains(m.BabaId.Value))
+                {
+                    parents.Add(m.BabaId.Value);
+                }
+
+                return parents;
+            });
+
+        var childrenOf = memberIds.ToDictionary(id => id, _ => new List<int>());
+        foreach (var (childId, parents) in parentsOf)
+        {
+            foreach (var parentId in parents)
+            {
+                childrenOf[parentId].Add(childId);
+            }
+        }
+
+        // Kan bağı derinliğine göre nesil hesabı (Kahn'ın topolojik sıralaması):
+        // sette ebeveyni olmayan kişiler 0. nesil, her çocuk ebeveynlerinin en derinin bir fazlası.
+        var generation = new Dictionary<int, int>();
+        var inDegree = memberIds.ToDictionary(id => id, id => parentsOf[id].Count);
+        var ready = new Queue<int>(memberIds.Where(id => inDegree[id] == 0));
+        foreach (var id in ready)
+        {
+            generation[id] = 0;
+        }
+
+        var pending = new Queue<int>(ready);
+        while (pending.Count > 0)
+        {
+            var current = pending.Dequeue();
+            foreach (var childId in childrenOf[current])
+            {
+                var candidate = generation[current] + 1;
+                if (!generation.TryGetValue(childId, out var existing) || existing < candidate)
+                {
+                    generation[childId] = candidate;
+                }
+
+                inDegree[childId]--;
+                if (inDegree[childId] == 0)
+                {
+                    pending.Enqueue(childId);
+                }
+            }
+        }
+
+        // Beklenmedik bir döngü olsa bile (normalde döngüler oluşturma anında engellenir) her kişiye bir nesil ata.
+        foreach (var id in memberIds)
+        {
+            if (!generation.ContainsKey(id))
+            {
+                generation[id] = 0;
+            }
+        }
+
+        var spouseRelationships = await _context.SpouseRelationships
+            .AsNoTracking()
+            .Where(sr => memberIds.Contains(sr.Person1Id) && memberIds.Contains(sr.Person2Id))
+            .ToListAsync();
+
+        // Evli çiftler aynı satırda görünsün diye eş jenerasyonlarını hizala (sabit noktaya ulaşana kadar).
+        var aligning = true;
+        var safety = memberIds.Count + spouseRelationships.Count + 5;
+        while (aligning && safety-- > 0)
+        {
+            aligning = false;
+            foreach (var sr in spouseRelationships)
+            {
+                var g1 = generation[sr.Person1Id];
+                var g2 = generation[sr.Person2Id];
+                if (g1 != g2)
+                {
+                    var max = Math.Max(g1, g2);
+                    generation[sr.Person1Id] = max;
+                    generation[sr.Person2Id] = max;
+                    aligning = true;
+                }
+            }
+        }
+
+        foreach (var member in members)
+        {
+            graph.Nodes.Add(ToNode(member, generation[member.Id], role: string.Empty));
+        }
+
+        foreach (var (childId, parents) in parentsOf)
+        {
+            foreach (var parentId in parents)
+            {
+                graph.Links.Add(new FamilyTreeLinkDto { Source = parentId, Target = childId, Relationship = "parent" });
+            }
+        }
+
+        foreach (var sr in spouseRelationships)
+        {
+            graph.Links.Add(new FamilyTreeLinkDto { Source = sr.Person1Id, Target = sr.Person2Id, Relationship = "spouse" });
+        }
+
+        return graph;
+    }
+
     private static void DeduplicateNodes(FamilyTreeGraphDto graph)
     {
         var seen = new HashSet<int>();

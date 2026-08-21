@@ -1757,6 +1757,54 @@ her biri beklenen davranışı (satır eklendi / atlandı / alan boş bırakıld
 
 ---
 
+# 51.3. Sülale (Aile Grubu) ve Doğum Yeri
+
+**Durum: Uygulandı.** `Person` modeline opsiyonel bir `SulaleId` (bkz. yeni `Sulale` varlığı:
+`Id`, `Ad` [benzersiz], `Aciklama`) ve bir `DogumYeri` (serbest metin) alanı eklendi.
+
+* **Sülale yönetimi**: `/Sulale` sayfası (Admin/Editor oluşturur/düzenler, yalnızca Admin
+  siler) sülaleleri bağımsız olarak yönetir. Bir sülale silindiğinde üyelerinin kaydı
+  silinmez, yalnızca `SulaleId` alanı `NULL` olur (`DeleteBehavior.SetNull`) — GEDCOM/CSV
+  içe aktarmadaki "etiket kaldır, veriyi kaybetme" prensibiyle aynı yaklaşım.
+* **Kişi ekleme/düzenleme**: Sülale, `Person/Create` ve `Person/Edit` formlarında bir
+  pulldown (`<select>`) olarak seçilir; listede yoksa "Sülaleler" sayfasına yönlendiren bir
+  bağlantı gösterilir. Doğum Yeri serbest metin girişi olarak eklenmiştir.
+* **Kişi listesi filtresi**: `/Person?sulaleId=X` o sülaledeki kişileri listeler (Sülale
+  Detay sayfasındaki üye sayısı bağlantısından ve Sülaleler sayfasından erişilir).
+* **Soy ağacında tüm sülaleyi gösterme**: `/FamilyTree/Sulale/{sulaleId}` (ve sayfa
+  içindeki "Sülale" pulldown'u), o sülaledeki **tüm** kişileri — merkez kişi kavramı
+  olmadan — tek bir grafikte gösterir. Bu, `FamilyTreeService.GetBySulaleAsync`'in kendine
+  özgü bir nesil hesaplama algoritması gerektirir (mevcut merkez-kişi uçları sabit
+  nesil numaraları kullanır, ör. anne/baba her zaman -1):
+
+  1. Sülale üyeleri arasındaki anne/baba bağlarından bir DAG kurulur (yalnızca her iki uç
+     da aynı sülaledeyse bağ dikkate alınır).
+  2. Kahn'ın topolojik sıralama algoritmasıyla her kişiye "kan bağı derinliği" nesil
+     numarası atanır: sette ebeveyni olmayanlar (kökler) 0. nesil, her çocuk
+     ebeveynlerinin en derininin bir fazlası — bu, birden fazla kökü (birbiriyle akraba
+     olmayan aile dalları) ve çoklu-ebeveyn zincirlerini doğru işler.
+  3. **Eş hizalama geçişi**: evli çiftlerin ekranda aynı satırda görünmesi beklenir
+     (genel soy ağacı çizim geleneği), ancak salt kan bağı derinliği bunu garanti etmez
+     (ör. bir eş sülalenin kendi soyundan gelmiyorsa 0. nesilde kalır, halbuki partneri
+     2. nesilde olabilir). Bu yüzden `SpouseRelationship` tablosunda kayıtlı her çift için
+     nesil numaraları `Math.Max`'e hizalanır, sabit noktaya ulaşana kadar tekrarlanır.
+     **Önemli:** bu hizalama yalnızca uygulamada **kayıtlı bir eş ilişkisi** olan çiftler
+     için çalışır — iki kişi yalnızca ortak bir çocuğa sahipse ama aralarında `AddSpouse`
+     ile kurulmuş bir ilişki yoksa, ikisi ayrı nesillerde görünebilir (gerçek kullanıcı
+     verisiyle test sırasında gözlemlenip doğrulanmış, algoritma hatası değil veri
+     eksikliği kaynaklı beklenen bir davranıştır).
+
+  İstemci tarafında (`familytree.js`) bu, mevcut kişi-merkezli görünümle aynı D3 render/
+  layout/dışa aktarma altyapısını paylaşan ayrı bir `loadSulaleTree()` fonksiyonuyla
+  yönetilir; bir kart tıklandığında (mevcut davranış korunarak) o kişi merkez alınıp
+  normal kişi-merkezli moda geri dönülür.
+
+Üç nesillik gerçek bir test ailesiyle (dede/nine, eşli anne/baba, çocuk) hem eş ilişkisi
+kurulmadan (yanlış hizalama olmadığı doğrulandı) hem kurulduktan sonra (doğru hizalama)
+gerçek tarayıcıda görsel olarak doğrulanmıştır.
+
+---
+
 # 52. Öncelikli Geliştirme Prensibi
 
 Öncelik:

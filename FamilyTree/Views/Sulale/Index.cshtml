@@ -1,0 +1,55 @@
+@model List<SulaleListItemViewModel>
+@{
+    ViewData["Title"] = "Sülaleler";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Sülaleler <span class="text-muted fs-6">(@Model.Count kayıt)</span></h2>
+    @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+    {
+        <a asp-action="Create" class="btn btn-primary">+ Yeni Sülale</a>
+    }
+</div>
+
+@if (!Model.Any())
+{
+    <p class="text-muted">Henüz sülale eklenmemiş.</p>
+}
+else
+{
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Ad</th>
+                <th>Açıklama</th>
+                <th>Üye Sayısı</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in Model)
+            {
+                <tr>
+                    <td>@s.Ad</td>
+                    <td>@(s.Aciklama ?? "-")</td>
+                    <td>
+                        <a asp-controller="Person" asp-action="Index" asp-route-q="" asp-route-sulaleId="@s.Id">@s.UyeSayisi</a>
+                    </td>
+                    <td class="text-end">
+                        <a asp-controller="FamilyTree" asp-action="Sulale" asp-route-id="@s.Id" class="btn btn-sm btn-outline-success">Soy Ağacını Gör</a>
+                        @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+                        {
+                            <a asp-action="Edit" asp-route-id="@s.Id" class="btn btn-sm btn-outline-secondary">Düzenle</a>
+                        }
+                        @if (User.IsInRole("Admin"))
+                        {
+                            <form asp-action="Delete" asp-route-id="@s.Id" method="post" class="d-inline" onsubmit="return confirm('Bu sülaleyi silmek istediğinizden emin misiniz? Üyelerin sülale etiketi kaldırılır, kişi kayıtları silinmez.');">
+                                <button type="submit" class="btn btn-sm btn-outline-danger">Sil</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

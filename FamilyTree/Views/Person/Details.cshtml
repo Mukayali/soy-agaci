@@ -18,6 +18,19 @@
         {
             <p class="text-muted mb-0">TC Kimlik No: @Model.TcKimlikNoMasked</p>
         }
+        @if (!string.IsNullOrWhiteSpace(Model.DogumYeri))
+        {
+            <p class="text-muted mb-0">Doğum Yeri: @Model.DogumYeri</p>
+        }
+        @if (Model.SulaleAdi != null)
+        {
+            <p class="text-muted mb-0">
+                Sülale:
+                <a asp-controller="Person" asp-action="Index" asp-route-sulaleId="@Model.SulaleId">@Model.SulaleAdi</a>
+                ·
+                <a asp-controller="FamilyTree" asp-action="Sulale" asp-route-id="@Model.SulaleId">Sülale Soy Ağacı</a>
+            </p>
+        }
     </div>
     <div>
         <a asp-controller="FamilyTree" asp-action="Index" asp-route-id="@Model.Id" class="btn btn-success">Soy Ağacını Gör</a>

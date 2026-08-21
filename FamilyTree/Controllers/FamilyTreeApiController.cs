@@ -60,6 +60,18 @@ public class FamilyTreeApiController : ControllerBase
         return Ok(await _familyTreeService.GetCousinsAsync(id));
     }
 
+    [HttpGet("sulale/{sulaleId:int}")]
+    public async Task<IActionResult> GetBySulale(int sulaleId)
+    {
+        var graph = await _familyTreeService.GetBySulaleAsync(sulaleId);
+        if (graph == null)
+        {
+            return NotFound();
+        }
+
+        return Ok(graph);
+    }
+
     [HttpPost("log-export")]
     public async Task<IActionResult> LogExport([FromBody] LogExportRequest request)
     {

@@ -27,6 +27,7 @@
 
     var state = {
         currentPersonId: null,
+        currentSulaleId: null,
         nodesById: new Map(),
         links: [],
     };
@@ -67,6 +68,12 @@
     function resetExpandButtons() {
         EXPAND_BUTTON_IDS.forEach(function (id) {
             document.getElementById(id).disabled = false;
+        });
+    }
+
+    function disableExpandButtons() {
+        EXPAND_BUTTON_IDS.forEach(function (id) {
+            document.getElementById(id).disabled = true;
         });
     }
 
@@ -391,7 +398,9 @@
     }
 
     function safeFileName(centerNode, extension) {
-        return 'soy-agaci-' + (centerNode ? centerNode.name.replace(/\s+/g, '-') : 'agaci') + '.' + extension;
+        var label = centerNode ? centerNode.name : document.getElementById('treeTitle').textContent.replace('Soy Ağacı', '').trim();
+        var safeLabel = (label || 'agaci').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '');
+        return 'soy-agaci-' + (safeLabel || 'agaci') + '.' + extension;
     }
 
     /**
@@ -445,7 +454,7 @@
         await inlinePhotoImages(exportSvg);
 
         var centerNode = state.currentPersonId ? state.nodesById.get(state.currentPersonId) : null;
-        var title = 'Soy Ağacı' + (centerNode ? ' - ' + centerNode.name : '');
+        var title = document.getElementById('treeTitle').textContent.trim();
 
         var titleEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         titleEl.setAttribute('x', padding);
@@ -574,14 +583,58 @@
             state.nodesById = new Map();
             state.links = [];
             state.currentPersonId = id;
+            state.currentSulaleId = null;
             mergeGraph(dto);
             resetExpandButtons();
 
+            var sulaleSelectEl = document.getElementById('sulaleSelect');
+            if (sulaleSelectEl) {
+                sulaleSelectEl.value = '';
+            }
+
             var centerNode = state.nodesById.get(id);
-            document.querySelector('h2').textContent = 'Soy Ağacı' + (centerNode ? ' - ' + centerNode.name : '');
+            document.getElementById('treeTitle').textContent = 'Soy Ağacı' + (centerNode ? ' - ' + centerNode.name : '');
 
             if (pushState) {
                 history.pushState(null, '', '/FamilyTree/' + id);
+            }
+
+            resizeSvg();
+            render();
+            fitToView(true);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    async function loadSulaleTree(sulaleId, pushState) {
+        setLoading(true);
+        try {
+            var res = await fetch('/api/familytree/sulale/' + sulaleId);
+            if (!res.ok) {
+                alert('Sülale bulunamadı.');
+                return;
+            }
+            var dto = await res.json();
+
+            state.nodesById = new Map();
+            state.links = [];
+            state.currentPersonId = null;
+            state.currentSulaleId = sulaleId;
+            mergeGraph(dto);
+            disableExpandButtons();
+
+            var sulaleSelectEl = document.getElementById('sulaleSelect');
+            var sulaleAdi = '';
+            if (sulaleSelectEl) {
+                sulaleSelectEl.value = String(sulaleId);
+                var selectedOption = sulaleSelectEl.options[sulaleSelectEl.selectedIndex];
+                sulaleAdi = selectedOption ? selectedOption.textContent : '';
+            }
+            document.getElementById('treeTitle').textContent = 'Soy Ağacı - ' + sulaleAdi + ' Sülalesi';
+
+            if (pushState) {
+                history.pushState(null, '', '/FamilyTree/Sulale/' + sulaleId);
             }
 
             resizeSvg();
@@ -649,6 +702,17 @@
         expand('cousins', 'cousins', 'showCousinsBtn');
     });
 
+    document.getElementById('sulaleSelect').addEventListener('change', function () {
+        var val = this.value;
+        if (val) {
+            loadSulaleTree(parseInt(val, 10), true);
+        } else if (state.currentPersonId) {
+            loadBaseTree(state.currentPersonId, true);
+        } else {
+            window.location.href = '/FamilyTree';
+        }
+    });
+
     var searchInput = document.getElementById('treeSearch');
     var searchResults = document.getElementById('treeSearchResults');
     var searchTimeout;
@@ -686,6 +750,12 @@
     });
 
     window.addEventListener('popstate', function () {
+        var sulaleMatch = /\/FamilyTree\/Sulale\/(\d+)/i.exec(location.pathname);
+        if (sulaleMatch) {
+            loadSulaleTree(parseInt(sulaleMatch[1], 10), false);
+            return;
+        }
+
         var parts = location.pathname.split('/').filter(Boolean);
         var idPart = parts[parts.length - 1];
         var id = parseInt(idPart, 10);
@@ -699,8 +769,11 @@
     });
 
     var initialId = parseInt(app.dataset.personId, 10);
+    var initialSulaleId = parseInt(app.dataset.sulaleId, 10);
     resizeSvg();
-    if (!isNaN(initialId)) {
+    if (!isNaN(initialSulaleId)) {
+        loadSulaleTree(initialSulaleId, false);
+    } else if (!isNaN(initialId)) {
         loadBaseTree(initialId, false);
     }
 })();

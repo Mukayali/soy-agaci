@@ -84,6 +84,24 @@
             </select>
             <div class="form-text">Amca/dayı/hala/teyze gibi akrabalık etiketlerinin doğru gösterilebilmesi için kullanılır.</div>
         </div>
+        <div class="col-md-4 mb-3">
+            <label asp-for="DogumYeri" class="form-label"></label>
+            <input asp-for="DogumYeri" class="form-control" placeholder="ör. İstanbul, Kars" />
+            <span asp-validation-for="DogumYeri" class="text-danger"></span>
+        </div>
+        <div class="col-md-4 mb-3">
+            <label asp-for="SulaleId" class="form-label"></label>
+            <select asp-for="SulaleId" class="form-select">
+                <option value="">Seçilmedi</option>
+                @foreach (var s in (List<SulaleListItemViewModel>)ViewBag.Sulaleler)
+                {
+                    <option value="@s.Id">@s.Ad</option>
+                }
+            </select>
+            <div class="form-text">
+                Listede yoksa önce <a asp-controller="Sulale" asp-action="Create" target="_blank">Sülaleler</a> sayfasından ekleyin.
+            </div>
+        </div>
     </div>
 
     <div class="row">

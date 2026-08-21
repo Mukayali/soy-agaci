@@ -26,7 +26,14 @@ public class Person
 
     public string? Aciklama { get; set; }
 
+    [MaxLength(200)]
+    public string? DogumYeri { get; set; }
+
     public Gender? Cinsiyet { get; set; }
+
+    public int? SulaleId { get; set; }
+
+    public Sulale? Sulale { get; set; }
 
     public int? AnneId { get; set; }
 

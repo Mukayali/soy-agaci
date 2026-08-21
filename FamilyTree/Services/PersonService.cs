@@ -27,6 +27,7 @@ public class PersonService : IPersonService
             .Include(p => p.Baba).ThenInclude(b => b!.Anne)
             .Include(p => p.Baba).ThenInclude(b => b!.Baba)
             .Include(p => p.Photos)
+            .Include(p => p.Sulale)
             .Include(p => p.SpouseRelationshipsAsPerson1).ThenInclude(sr => sr.Person2)
             .Include(p => p.SpouseRelationshipsAsPerson2).ThenInclude(sr => sr.Person1)
             .FirstOrDefaultAsync(p => p.Id == id);
@@ -142,6 +143,9 @@ public class PersonService : IPersonService
             DogumTarihi = person.DogumTarihi,
             OlumTarihi = person.OlumTarihi,
             Aciklama = person.Aciklama,
+            DogumYeri = person.DogumYeri,
+            SulaleId = person.SulaleId,
+            SulaleAdi = person.Sulale?.Ad,
             Anne = person.Anne == null ? null : ToListItem(person.Anne),
             Baba = person.Baba == null ? null : ToListItem(person.Baba),
             Esler = spouses.Select(p => ToListItem(p)).ToList(),
@@ -194,6 +198,8 @@ public class PersonService : IPersonService
             DogumTarihi = person.DogumTarihi,
             OlumTarihi = person.OlumTarihi,
             Cinsiyet = person.Cinsiyet,
+            DogumYeri = person.DogumYeri,
+            SulaleId = person.SulaleId,
             AnneId = person.AnneId,
             BabaId = person.BabaId,
             AnneAdSoyad = person.Anne == null ? null : $"{person.Anne.Ad} {person.Anne.Soyad}",
@@ -213,7 +219,7 @@ public class PersonService : IPersonService
         };
     }
 
-    public async Task<PersonIndexViewModel> SearchAsync(string? query, int page = 1, int pageSize = 20)
+    public async Task<PersonIndexViewModel> SearchAsync(string? query, int page = 1, int pageSize = 20, int? sulaleId = null)
     {
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
@@ -230,6 +236,11 @@ public class PersonService : IPersonService
                 (p.TcKimlikNo != null && p.TcKimlikNo == trimmed));
         }
 
+        if (sulaleId.HasValue)
+        {
+            baseQuery = baseQuery.Where(p => p.SulaleId == sulaleId);
+        }
+
         var totalCount = await baseQuery.CountAsync();
 
         var persons = await baseQuery
@@ -238,10 +249,21 @@ public class PersonService : IPersonService
             .Take(pageSize)
             .ToListAsync();
 
+        string? sulaleAdi = null;
+        if (sulaleId.HasValue)
+        {
+            sulaleAdi = await _context.Sulaleler.AsNoTracking()
+                .Where(s => s.Id == sulaleId)
+                .Select(s => s.Ad)
+                .FirstOrDefaultAsync();
+        }
+
         return new PersonIndexViewModel
         {
             Persons = persons.Select(p => ToListItem(p)).ToList(),
             Query = query,
+            SulaleId = sulaleId,
+            SulaleAdi = sulaleAdi,
             Page = page,
             PageSize = pageSize,
             TotalCount = totalCount,
@@ -285,6 +307,11 @@ public class PersonService : IPersonService
             return (false, null, validation.ErrorMessage);
         }
 
+        if (model.SulaleId.HasValue && !await _context.Sulaleler.AnyAsync(s => s.Id == model.SulaleId))
+        {
+            return (false, null, "Seçilen sülale bulunamadı.");
+        }
+
         if (!string.IsNullOrWhiteSpace(model.TcKimlikNo))
         {
             var exists = await _context.Persons.AnyAsync(p => p.TcKimlikNo == model.TcKimlikNo);
@@ -302,6 +329,8 @@ public class PersonService : IPersonService
             DogumTarihi = model.DogumTarihi,
             OlumTarihi = model.OlumTarihi,
             Cinsiyet = model.Cinsiyet,
+            DogumYeri = string.IsNullOrWhiteSpace(model.DogumYeri) ? null : model.DogumYeri.Trim(),
+            SulaleId = model.SulaleId,
             AnneId = model.AnneId,
             BabaId = model.BabaId,
             Aciklama = model.Aciklama,
@@ -336,6 +365,11 @@ public class PersonService : IPersonService
             return (false, validation.ErrorMessage);
         }
 
+        if (model.SulaleId.HasValue && !await _context.Sulaleler.AnyAsync(s => s.Id == model.SulaleId))
+        {
+            return (false, "Seçilen sülale bulunamadı.");
+        }
+
         if (!string.IsNullOrWhiteSpace(model.TcKimlikNo))
         {
             var exists = await _context.Persons.AnyAsync(p => p.TcKimlikNo == model.TcKimlikNo && p.Id != model.Id);
@@ -351,6 +385,8 @@ public class PersonService : IPersonService
         person.DogumTarihi = model.DogumTarihi;
         person.OlumTarihi = model.OlumTarihi;
         person.Cinsiyet = model.Cinsiyet;
+        person.DogumYeri = string.IsNullOrWhiteSpace(model.DogumYeri) ? null : model.DogumYeri.Trim();
+        person.SulaleId = model.SulaleId;
         person.AnneId = model.AnneId;
         person.BabaId = model.BabaId;
         person.Aciklama = model.Aciklama;

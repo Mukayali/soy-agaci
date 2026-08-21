@@ -1,4 +1,5 @@
 using FamilyTree.Data;
+using FamilyTree.ViewModels;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -35,7 +36,32 @@ public class FamilyTreeController : Controller
 
         ViewBag.PersonId = person.Id;
         ViewBag.PersonName = $"{person.Ad} {person.Soyad}";
+        await PopulateSulalelerAsync();
 
         return View();
+    }
+
+    public async Task<IActionResult> Sulale(int id)
+    {
+        var sulale = await _context.Sulaleler.AsNoTracking().FirstOrDefaultAsync(s => s.Id == id);
+        if (sulale == null)
+        {
+            return NotFound();
+        }
+
+        ViewBag.SulaleId = sulale.Id;
+        ViewBag.SulaleAdi = sulale.Ad;
+        await PopulateSulalelerAsync();
+
+        return View("Index");
+    }
+
+    private async Task PopulateSulalelerAsync()
+    {
+        ViewBag.Sulaleler = await _context.Sulaleler
+            .AsNoTracking()
+            .OrderBy(s => s.Ad)
+            .Select(s => new SulaleListItemViewModel { Id = s.Id, Ad = s.Ad })
+            .ToListAsync();
     }
 }

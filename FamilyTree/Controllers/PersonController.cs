@@ -36,9 +36,9 @@ public class PersonController : Controller
         _logger = logger;
     }
 
-    public async Task<IActionResult> Index(string? q, int page = 1)
+    public async Task<IActionResult> Index(string? q, int page = 1, int? sulaleId = null)
     {
-        var result = await _personService.SearchAsync(q, page);
+        var result = await _personService.SearchAsync(q, page, sulaleId: sulaleId);
         return View(result);
     }
 
@@ -54,8 +54,9 @@ public class PersonController : Controller
     }
 
     [Authorize(Roles = "Admin,Editor")]
-    public IActionResult Create()
+    public async Task<IActionResult> Create()
     {
+        await PopulateSulalelerAsync();
         return View(new PersonCreateViewModel());
     }
 
@@ -66,6 +67,7 @@ public class PersonController : Controller
     {
         if (!ModelState.IsValid)
         {
+            await PopulateSulalelerAsync();
             return View(model);
         }
 
@@ -74,6 +76,7 @@ public class PersonController : Controller
         if (!success)
         {
             ModelState.AddModelError(string.Empty, errorMessage ?? "Kişi kaydedilemedi.");
+            await PopulateSulalelerAsync();
             return View(model);
         }
 
@@ -91,6 +94,7 @@ public class PersonController : Controller
             return NotFound();
         }
 
+        await PopulateSulalelerAsync();
         return View(vm);
     }
 
@@ -106,6 +110,7 @@ public class PersonController : Controller
 
         if (!ModelState.IsValid)
         {
+            await PopulateSulalelerAsync();
             return View(model);
         }
 
@@ -114,6 +119,7 @@ public class PersonController : Controller
         if (!success)
         {
             ModelState.AddModelError(string.Empty, errorMessage ?? "Kişi güncellenemedi.");
+            await PopulateSulalelerAsync();
             return View(model);
         }
 
@@ -319,6 +325,15 @@ public class PersonController : Controller
         content.CopyTo(bytes, utf8Bom.Length);
 
         return File(bytes, "text/csv", "kisiler-sablon.csv");
+    }
+
+    private async Task PopulateSulalelerAsync()
+    {
+        ViewBag.Sulaleler = await _context.Sulaleler
+            .AsNoTracking()
+            .OrderBy(s => s.Ad)
+            .Select(s => new SulaleListItemViewModel { Id = s.Id, Ad = s.Ad })
+            .ToListAsync();
     }
 
     private static string CsvField(string? value)

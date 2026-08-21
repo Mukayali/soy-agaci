@@ -3,6 +3,14 @@
     ViewData["Title"] = "Kişiler";
 }
 
+@if (Model.SulaleAdi != null)
+{
+    <div class="alert alert-info d-flex justify-content-between align-items-center">
+        <span><strong>@Model.SulaleAdi</strong> sülalesi üyeleri gösteriliyor.</span>
+        <a asp-action="Index" asp-route-q="@Model.Query" class="btn btn-sm btn-outline-secondary">Filtreyi Temizle</a>
+    </div>
+}
+
 <div class="d-flex justify-content-between align-items-center mb-3">
     <h2>Kişiler <span class="text-muted fs-6">(@Model.TotalCount kayıt)</span></h2>
     <div>
@@ -48,6 +56,7 @@
 }
 
 <form method="get" class="row g-2 mb-3">
+    <input type="hidden" name="sulaleId" value="@Model.SulaleId" />
     <div class="col-auto">
         <input type="text" name="q" value="@Model.Query" class="form-control" placeholder="Ad, soyad veya TC Kimlik No" />
     </div>
@@ -106,7 +115,7 @@ else
                 @for (var i = 1; i <= Model.TotalPages; i++)
                 {
                     <li class="page-item @(i == Model.Page ? "active" : "")">
-                        <a class="page-link" asp-action="Index" asp-route-q="@Model.Query" asp-route-page="@i">@i</a>
+                        <a class="page-link" asp-action="Index" asp-route-q="@Model.Query" asp-route-sulaleId="@Model.SulaleId" asp-route-page="@i">@i</a>
                     </li>
                 }
             </ul>

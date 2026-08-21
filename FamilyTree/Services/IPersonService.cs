@@ -8,7 +8,7 @@ public interface IPersonService
 
     Task<PersonEditViewModel?> GetForEditAsync(int id);
 
-    Task<PersonIndexViewModel> SearchAsync(string? query, int page = 1, int pageSize = 20);
+    Task<PersonIndexViewModel> SearchAsync(string? query, int page = 1, int pageSize = 20, int? sulaleId = null);
 
     Task<List<PersonSearchResultItem>> QuickSearchAsync(string query, int? excludePersonId = null, int limit = 10);
 

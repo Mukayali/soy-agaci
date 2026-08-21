@@ -22,6 +22,8 @@ public class PersonIndexViewModel
 {
     public List<PersonListItemViewModel> Persons { get; set; } = new();
     public string? Query { get; set; }
+    public int? SulaleId { get; set; }
+    public string? SulaleAdi { get; set; }
     public int Page { get; set; } = 1;
     public int PageSize { get; set; } = 20;
     public int TotalCount { get; set; }
@@ -62,6 +64,13 @@ public class PersonCreateViewModel : IValidatableObject
 
     [Display(Name = "Cinsiyet")]
     public Gender? Cinsiyet { get; set; }
+
+    [Display(Name = "Doğum Yeri")]
+    [MaxLength(200)]
+    public string? DogumYeri { get; set; }
+
+    [Display(Name = "Sülale")]
+    public int? SulaleId { get; set; }
 
     [Display(Name = "Anne")]
     public int? AnneId { get; set; }
@@ -137,6 +146,9 @@ public class PersonDetailViewModel
     public DateTime? OlumTarihi { get; set; }
     public bool Hayatta => OlumTarihi == null;
     public string? Aciklama { get; set; }
+    public string? DogumYeri { get; set; }
+    public int? SulaleId { get; set; }
+    public string? SulaleAdi { get; set; }
 
     public PersonListItemViewModel? Anne { get; set; }
     public PersonListItemViewModel? Baba { get; set; }

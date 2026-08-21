@@ -50,6 +50,14 @@ Mimari kararlar ve geliştirme kuralları için bkz. [CLAUDE.md](./CLAUDE.md).
   tarayıcının kendi font motoruyla rasterleştirilir, SVG ise doğrudan vektör olarak (en
   sadık sonuç, Illustrator/Inkscape'te düzenlenebilir) indirilir — bkz. `CLAUDE.md`
   Bölüm 51.1'de bu tasarımın gerekçesi (jsPDF'in özel font gömme hatası).
+- **Sülale (aile grubu) ve doğum yeri**: `/Sulale` sayfasından sülaleler (Admin/Editor ekler ve
+  düzenler, Admin siler) yönetilir. Kişi ekleme/düzenleme formunda Sülale bir pulldown menü olarak
+  seçilir ve isteğe bağlı bir "Doğum Yeri" alanı bulunur. `/Person?sulaleId=X` ile bir sülalenin tüm
+  üyeleri listelenebilir. `/FamilyTree/Sulale/{id}` tek bir kişiyi merkez almadan, sülalenin **tüm**
+  üyelerini tek bir ağaçta gösterir — nesil derinliği, sülale içi kan bağlarından oluşan DAG üzerinde
+  topolojik sıralama (Kahn algoritması) ile hesaplanır ve evli çiftler (yalnızca aralarında kayıtlı bir
+  `SpouseRelationship` varsa) sabit nokta yinelemesiyle aynı görsel satıra hizalanır — bkz. `CLAUDE.md`
+  Bölüm 51.3.
 
 Faz 1-6'nın tamamı tamamlandı — kalan işler artık CLAUDE.md Bölüm 50'deki gelecek özellikleri
 (aile olayları, gelişmiş raporlama, harita entegrasyonu vb.) kapsıyor.
