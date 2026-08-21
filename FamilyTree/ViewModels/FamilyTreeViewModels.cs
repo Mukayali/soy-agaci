@@ -4,6 +4,8 @@ public class FamilyTreeNodeDto
 {
     public int Id { get; set; }
     public string Name { get; set; } = string.Empty;
+    public string Ad { get; set; } = string.Empty;
+    public string Soyad { get; set; } = string.Empty;
     public int? BirthYear { get; set; }
     public int? DeathYear { get; set; }
     public bool Alive { get; set; }

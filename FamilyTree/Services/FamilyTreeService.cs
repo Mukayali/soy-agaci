@@ -558,6 +558,8 @@ public class FamilyTreeService : IFamilyTreeService
         {
             Id = p.Id,
             Name = $"{p.Ad} {p.Soyad}",
+            Ad = p.Ad,
+            Soyad = p.Soyad,
             BirthYear = p.DogumTarihi?.Year,
             DeathYear = p.OlumTarihi?.Year,
             Alive = p.OlumTarihi == null,
