@@ -6,10 +6,17 @@
         return;
     }
 
-    var CARD_W = 170;
-    var CARD_H = 86;
-    var SPACING_X = 200;
-    var SPACING_Y = 160;
+    var CARD_W = 240;
+    var CARD_H = 128;
+    var SPACING_X = 280;
+    var SPACING_Y = 220;
+
+    var PHOTO_X = 12;
+    var PHOTO_Y = 12;
+    var PHOTO_W = 94;
+    var PHOTO_H = CARD_H - 24;
+    var PHOTO_RADIUS = 14;
+    var TEXT_X = PHOTO_X + PHOTO_W + 16;
 
     var svg = d3.select('#treeSvg');
     var wrapper = document.getElementById('treeWrapper');
@@ -17,6 +24,20 @@
     var g = svg.append('g').attr('class', 'viewport');
     var linksLayer = g.append('g').attr('class', 'links-layer');
     var nodesLayer = g.append('g').attr('class', 'nodes-layer');
+
+    // clipPath, nodesLayer'ın bir çocuğu olarak tanımlanır — böylece PDF/PNG/SVG dışa
+    // aktarma sırasında (bkz. buildExportSvg) nodesLayer klonlandığında bu tanım da
+    // birlikte kopyalanır ve fotoğraf kırpma referansı (url(#personPhotoClip)) kopyada da
+    // çözümlenir. svg kökündeki ayrı bir <defs> kullanılsaydı klonlanan SVG'de kaybolurdu.
+    nodesLayer.append('defs')
+        .append('clipPath')
+        .attr('id', 'personPhotoClip')
+        .append('rect')
+        .attr('x', PHOTO_X)
+        .attr('y', PHOTO_Y)
+        .attr('width', PHOTO_W)
+        .attr('height', PHOTO_H)
+        .attr('rx', PHOTO_RADIUS);
 
     var zoomBehavior = d3.zoom()
         .scaleExtent([0.2, 3])
@@ -228,70 +249,73 @@
             .attr('class', 'card-bg')
             .attr('width', CARD_W)
             .attr('height', CARD_H)
-            .attr('rx', 10)
+            .attr('rx', 20)
             .attr('fill', '#fff');
 
-        nodeEnter.append('circle')
+        nodeEnter.append('rect')
             .attr('class', 'avatar-fallback')
-            .attr('r', 16)
-            .attr('cx', 24)
-            .attr('cy', CARD_H / 2)
+            .attr('x', PHOTO_X)
+            .attr('y', PHOTO_Y)
+            .attr('width', PHOTO_W)
+            .attr('height', PHOTO_H)
+            .attr('rx', PHOTO_RADIUS)
             .attr('fill', '#cfd8dc');
 
         nodeEnter.append('text')
             .attr('class', 'avatar-initial')
-            .attr('x', 24)
-            .attr('y', CARD_H / 2 + 5)
+            .attr('x', PHOTO_X + PHOTO_W / 2)
+            .attr('y', PHOTO_Y + PHOTO_H / 2 + 11)
             .attr('text-anchor', 'middle')
-            .attr('font-size', 13)
-            .attr('fill', '#546e7a');
+            .attr('font-size', 32)
+            .attr('font-weight', '600')
+            .attr('fill', '#607d8b');
 
         nodeEnter.append('image')
             .attr('class', 'avatar-photo')
-            .attr('width', 32)
-            .attr('height', 32)
-            .attr('x', 8)
-            .attr('y', CARD_H / 2 - 16)
-            .attr('clip-path', function (d) { return 'circle(16px at 16px 16px)'; })
+            .attr('x', PHOTO_X)
+            .attr('y', PHOTO_Y)
+            .attr('width', PHOTO_W)
+            .attr('height', PHOTO_H)
+            .attr('clip-path', 'url(#personPhotoClip)')
             .attr('preserveAspectRatio', 'xMidYMid slice');
 
         nodeEnter.append('text')
             .attr('class', 'role-badge')
-            .attr('x', CARD_W - 8)
-            .attr('y', 16)
+            .attr('x', CARD_W - 12)
+            .attr('y', 20)
             .attr('text-anchor', 'end')
-            .attr('font-size', 10)
+            .attr('font-size', 11)
             .attr('fill', '#90a4ae');
 
         nodeEnter.append('text')
             .attr('class', 'name-text')
-            .attr('x', 50)
-            .attr('y', CARD_H / 2 - 4)
-            .attr('font-size', 13)
-            .attr('font-weight', '600')
+            .attr('x', TEXT_X)
+            .attr('y', CARD_H / 2 - 6)
+            .attr('font-size', 19)
+            .attr('font-weight', '700')
             .attr('fill', '#212121');
 
         nodeEnter.append('text')
             .attr('class', 'years-text')
-            .attr('x', 50)
-            .attr('y', CARD_H / 2 + 14)
-            .attr('font-size', 11)
-            .attr('fill', '#607d8b');
+            .attr('x', TEXT_X)
+            .attr('y', CARD_H / 2 + 20)
+            .attr('font-size', 15)
+            .attr('fill', '#64748b');
 
         var detailIcon = nodeEnter.append('g')
             .attr('class', 'detail-icon')
-            .attr('transform', 'translate(' + (CARD_W - 22) + ', ' + (CARD_H - 22) + ')')
+            .attr('transform', 'translate(' + (CARD_W - 6) + ', ' + (CARD_H - 6) + ')')
             .style('cursor', 'pointer')
             .on('click', function (event, d) {
                 event.stopPropagation();
                 window.location.href = '/Person/Details/' + d.id;
             });
 
-        detailIcon.append('circle').attr('r', 10).attr('fill', '#e3f2fd');
+        detailIcon.append('circle').attr('r', 15).attr('fill', '#e3f2fd');
         detailIcon.append('text')
             .attr('text-anchor', 'middle')
-            .attr('y', 4)
-            .attr('font-size', 11)
+            .attr('y', 5)
+            .attr('font-size', 15)
             .attr('fill', '#1976d2')
             .text('↗');
 
@@ -301,10 +325,10 @@
 
         merged.select('rect.card-bg')
             .attr('stroke', function (d) { return d.isCenter ? '#f57f17' : (d.alive ? '#1976d2' : '#9e9e9e'); })
-            .attr('stroke-width', function (d) { return d.isCenter ? 3 : 1.5; })
-            .attr('stroke-dasharray', function (d) { return d.alive ? null : '4,3'; });
+            .attr('stroke-width', function (d) { return d.isCenter ? 4 : 2.5; })
+            .attr('stroke-dasharray', function (d) { return d.alive ? null : '9,6'; });
 
-        merged.select('text.name-text').text(function (d) { return truncate(d.name, 18); });
+        merged.select('text.name-text').text(function (d) { return truncate(d.name, 20); });
         merged.select('text.years-text').text(personYears);
         merged.select('text.role-badge').text(function (d) { return d.isCenter ? '' : d.role; });
 
@@ -312,7 +336,7 @@
             .style('display', function (d) { return d.photoPath ? 'none' : null; })
             .text(function (d) { return d.name ? d.name.charAt(0).toUpperCase() : '?'; });
 
-        merged.select('circle.avatar-fallback')
+        merged.select('rect.avatar-fallback')
             .style('display', function (d) { return d.photoPath ? 'none' : null; });
 
         merged.select('image.avatar-photo')
