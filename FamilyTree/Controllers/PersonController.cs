@@ -11,9 +11,12 @@ namespace FamilyTree.Controllers;
 
 public class PersonController : Controller
 {
+    private const long MaxCsvFileSizeBytes = 5 * 1024 * 1024; // 5 MB
+
     private readonly IPersonService _personService;
     private readonly IPhotoService _photoService;
     private readonly IAuditLogService _auditLogService;
+    private readonly ICsvImportService _csvImportService;
     private readonly ApplicationDbContext _context;
     private readonly ILogger<PersonController> _logger;
 
@@ -21,12 +24,14 @@ public class PersonController : Controller
         IPersonService personService,
         IPhotoService photoService,
         IAuditLogService auditLogService,
+        ICsvImportService csvImportService,
         ApplicationDbContext context,
         ILogger<PersonController> logger)
     {
         _personService = personService;
         _photoService = photoService;
         _auditLogService = auditLogService;
+        _csvImportService = csvImportService;
         _context = context;
         _logger = logger;
     }
@@ -246,6 +251,74 @@ public class PersonController : Controller
         content.CopyTo(bytes, utf8Bom.Length);
 
         return File(bytes, "text/csv", $"kisiler-{DateTime.UtcNow:yyyyMMdd-HHmmss}.csv");
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin,Editor")]
+    public async Task<IActionResult> ImportCsv(IFormFile? csvFile)
+    {
+        if (csvFile == null || csvFile.Length == 0)
+        {
+            TempData["ErrorMessage"] = "Lütfen bir CSV dosyası seçin.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        if (csvFile.Length > MaxCsvFileSizeBytes)
+        {
+            TempData["ErrorMessage"] = "Dosya boyutu 5 MB'ı aşamaz.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        var extension = Path.GetExtension(csvFile.FileName).ToLowerInvariant();
+        if (extension != ".csv")
+        {
+            TempData["ErrorMessage"] = "Yalnızca .csv uzantılı dosyalar kabul edilir.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        await using var stream = csvFile.OpenReadStream();
+        var result = await _csvImportService.ImportAsync(stream);
+
+        if (!result.Success)
+        {
+            TempData["ErrorMessage"] = result.ErrorMessage ?? "İçe aktarma başarısız oldu.";
+            return RedirectToAction(nameof(Index));
+        }
+
+        await _auditLogService.LogAsync(
+            $"CSV içe aktarıldı ({result.PersonsCreated} kişi, {result.RelationshipsLinked} anne/baba ilişkisi)",
+            "Person");
+
+        TempData["SuccessMessage"] =
+            $"{result.PersonsCreated} kişi eklendi, {result.RelationshipsLinked} anne/baba ilişkisi kuruldu.";
+
+        if (result.Warnings.Count > 0)
+        {
+            TempData["ImportWarnings"] = string.Join("\n", result.Warnings.Take(50));
+        }
+
+        return RedirectToAction(nameof(Index));
+    }
+
+    [Authorize(Roles = "Admin,Editor")]
+    public IActionResult CsvImportTemplate()
+    {
+        var sb = new StringBuilder();
+        sb.AppendLine("TCKimlikNo,Ad,Soyad,Cinsiyet,DogumTarihi,OlumTarihi,AnneTC,BabaTC");
+        sb.AppendLine("11111111110,Hasan,Demir,Erkek,1940-01-15,2015-06-20,,");
+        sb.AppendLine("22222222220,Fatma,Demir,Kadin,1943-03-10,,,");
+        sb.AppendLine("33333333330,Mehmet,Demir,Erkek,1965-07-01,,22222222220,11111111110");
+        sb.AppendLine("44444444440,Ayşe,Kaya,Kadin,1968-09-05,,,");
+        sb.AppendLine("55555555550,Ali,Demir,Erkek,1990-05-05,,44444444440,33333333330");
+
+        var utf8Bom = Encoding.UTF8.GetPreamble();
+        var content = Encoding.UTF8.GetBytes(sb.ToString());
+        var bytes = new byte[utf8Bom.Length + content.Length];
+        utf8Bom.CopyTo(bytes, 0);
+        content.CopyTo(bytes, utf8Bom.Length);
+
+        return File(bytes, "text/csv", "kisiler-sablon.csv");
     }
 
     private static string CsvField(string? value)

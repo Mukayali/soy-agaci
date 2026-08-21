@@ -1697,6 +1697,42 @@ Kütüphane: yalnızca `jspdf` (UMD, yerel barındırılan `wwwroot/lib/jspdf/js
 
 ---
 
+# 51.2. CSV Toplu Kişi İçe Aktarma
+
+**Durum: Uygulandı.** `/Person` (Kişiler) sayfasındaki "CSV İçe Aktar" paneli (Admin/Editor),
+`TCKimlikNo, Ad, Soyad, Cinsiyet, DogumTarihi, OlumTarihi, AnneTC, BabaTC` sütunlarını içeren
+bir CSV dosyasından toplu kişi ekler. Aynı sayfadaki "Örnek Şablon İndir" bağlantısı
+(`PersonController.CsvImportTemplate`) doğru sütun sırasını ve gerçek olmayan (açıkça
+tekrarlı basamaklı) örnek TC Kimlik No'lar içeren bir başlangıç dosyası sağlar.
+
+**Anne/Baba eşleştirme mantığı:** `AnneTC`/`BabaTC` sütunları, dosyadaki başka bir satırın
+`TCKimlikNo`'suna **veya** veritabanında zaten kayıtlı bir kişinin TC'sine eşleşerek
+ilişkiyi otomatik kurar (`CsvImportService.ImportAsync`, iki geçişli: önce tüm kişiler
+oluşturulur ve TC→Id eşlemesi çıkarılır, sonra bu eşlemeyle anne/baba bağlanır). Bu, GEDCOM
+içe aktarmadaki xref eşleştirme mantığının TC Kimlik No üzerinden kurulmuş halidir.
+
+**Veri kalitesi kuralları** (satır bazında, tek bir hatalı satır tüm içe aktarmayı
+başarısız kılmaz — satır atlanır veya ilgili alan boş bırakılır, bir uyarı eklenir):
+
+* Ad veya Soyad boşsa satır atlanır.
+* TC formatı geçersizse (11 haneli değil) TC'siz içe aktarılır.
+* Aynı TC dosya içinde birden fazla geçiyorsa ikinci ve sonraki satırlar atlanır.
+* TC veritabanında zaten kayıtlıysa yeni kişi oluşturulmaz (mevcut kayıt yine de
+  anne/baba referansı olarak kullanılabilir) — bu, "upsert" değil "var olanı çakıştırma"
+  davranışıdır; CSV import her zaman **yeni** kayıt oluşturur, mevcut kişileri güncellemez.
+* Doğum/ölüm tarihi gelecekte olamaz, ölüm doğumdan önce olamaz, çözümlenemeyen tarihler
+  boş bırakılır (GEDCOM içe aktarmadaki "yanlış kesinlik oluşturma" prensibiyle aynı).
+* Kişi kendi annesi/babası olarak referans verilemez.
+* Tek seferde en fazla 5000 satır (dosya boyutu limiti: 5 MB, yalnızca `.csv` uzantısı).
+
+Tüm işlem tek bir DB transaction'ı içindedir; beklenmeyen bir hata oluşursa hiçbir kayıt
+eklenmez. On adet uç durumla (mükerrer TC, eksik alan, geçersiz tarih/cinsiyet, kendine
+referans, var olan kişiye çapraz referans vb.) gerçek tarayıcıda ve curl ile test edilmiş,
+her biri beklenen davranışı (satır eklendi / atlandı / alan boş bırakıldı) doğru şekilde
+üretmiştir.
+
+---
+
 # 52. Öncelikli Geliştirme Prensibi
 
 Öncelik:

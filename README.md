@@ -26,6 +26,13 @@ Mimari kararlar ve geliştirme kuralları için bkz. [CLAUDE.md](./CLAUDE.md).
   tablosuna kaydedilir (kullanıcı, işlem, tarih, IP, varlık); TC Kimlik No veya şifre asla loglanmaz.
   Admin-only `/AuditLog` sayfasından incelenebilir.
 - **Veri dışa aktarma**: Kişiler sayfasından mevcut arama filtresine göre CSV dışa aktarma.
+- **CSV toplu kişi içe aktarma**: Kişiler sayfasındaki "CSV İçe Aktar" paneli (Admin/Editor)
+  `TCKimlikNo, Ad, Soyad, Cinsiyet, DogumTarihi, OlumTarihi, AnneTC, BabaTC` sütunlarından
+  toplu kişi ekler; `AnneTC`/`BabaTC` dosyadaki diğer satırlara veya veritabanında zaten
+  kayıtlı kişilere TC üzerinden otomatik bağlanır. "Örnek Şablon İndir" ile hazır bir
+  başlangıç dosyası indirilebilir. Hatalı/eksik satırlar tüm içe aktarmayı durdurmaz —
+  atlanır veya ilgili alan boş bırakılır, ayrıntılı bir uyarı listesiyle bildirilir
+  (bkz. `CLAUDE.md` Bölüm 51.2).
 - **Yedekleme (mysqldump tabanlı)**: Admin-only `/Backup` sayfasından anlık `.sql` yedeği indirilebilir;
   düzenli/otomatik yedekleme için `scripts/backup.sh` betiği cron ile zamanlanabilir (bkz. aşağıda).
 - **GEDCOM içe/dışa aktarma**: `/Gedcom` sayfasından standart GEDCOM 5.5.1 formatında dışa aktarma

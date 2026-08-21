@@ -9,10 +9,43 @@
         <a asp-action="ExportCsv" asp-route-q="@Model.Query" class="btn btn-outline-secondary">CSV Dışa Aktar</a>
         @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
         {
+            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#csvImportPanel">CSV İçe Aktar</button>
             <a asp-action="Create" class="btn btn-primary">+ Yeni Kişi</a>
         }
     </div>
 </div>
+
+@if (TempData["ImportWarnings"] is string importWarnings)
+{
+    <div class="alert alert-warning">
+        <strong>Uyarılar:</strong>
+        <pre class="mb-0" style="white-space:pre-wrap;">@importWarnings</pre>
+    </div>
+}
+
+@if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+{
+    <div class="collapse mb-3" id="csvImportPanel">
+        <div class="card card-body">
+            <h5 class="card-title">CSV ile Toplu Kişi Yükleme</h5>
+            <p class="text-muted">
+                Sütunlar: <code>TCKimlikNo, Ad, Soyad, Cinsiyet, DogumTarihi, OlumTarihi, AnneTC, BabaTC</code>.
+                <code>Ad</code> ve <code>Soyad</code> zorunludur, diğerleri opsiyoneldir.
+                <code>AnneTC</code>/<code>BabaTC</code>, dosyadaki başka bir satırın veya sistemde zaten
+                kayıtlı bir kişinin TC Kimlik No'suna eşleşerek anne/baba ilişkisini otomatik kurar.
+                Cinsiyet için <code>Erkek</code>/<code>Kadın</code> (veya E/K) kullanın; tarihler
+                <code>yyyy-aa-gg</code> (ör. 1990-05-05) veya <code>gg.aa.yyyy</code> formatında olabilir.
+            </p>
+            <p>
+                <a asp-action="CsvImportTemplate" class="btn btn-sm btn-outline-primary">Örnek Şablon İndir</a>
+            </p>
+            <form asp-action="ImportCsv" method="post" enctype="multipart/form-data" class="d-flex gap-2">
+                <input type="file" name="csvFile" class="form-control" accept=".csv" required />
+                <button type="submit" class="btn btn-primary text-nowrap">İçe Aktar</button>
+            </form>
+        </div>
+    </div>
+}
 
 <form method="get" class="row g-2 mb-3">
     <div class="col-auto">
