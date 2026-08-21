@@ -1,0 +1,46 @@
+@{
+    ViewData["Title"] = "GEDCOM";
+}
+
+<h2 class="mb-3">GEDCOM İçe / Dışa Aktarma</h2>
+
+@if (TempData["ImportWarnings"] is string warnings)
+{
+    <div class="alert alert-warning">
+        <strong>Uyarılar:</strong>
+        <pre class="mb-0" style="white-space:pre-wrap;">@warnings</pre>
+    </div>
+}
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Dışa Aktar</h5>
+        <p class="card-text text-muted">
+            Sistemdeki tüm kişileri ve aile ilişkilerini standart GEDCOM 5.5.1 formatında
+            (<code>.ged</code>) dışa aktarır. Diğer soy ağacı programlarına (Ancestry, MyHeritage,
+            Gramps vb.) aktarılabilir. TC Kimlik No gibi hassas bilgiler dışa aktarılmaz.
+        </p>
+        <a asp-action="Export" class="btn btn-primary">GEDCOM Olarak İndir (.ged)</a>
+    </div>
+</div>
+
+@if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+{
+    <div class="card">
+        <div class="card-body">
+            <h5 class="card-title">İçe Aktar</h5>
+            <p class="card-text text-muted">
+                Başka bir programdan dışa aktarılmış bir GEDCOM (<code>.ged</code>) dosyası yükleyin.
+                Dosyadaki her kişi yeni bir kayıt olarak eklenir; anne/baba ve eş ilişkileri
+                dosyadaki aile (FAM) kayıtlarından otomatik kurulur. Kesin gün/ay/yıl içermeyen
+                tarihler (ör. "ABT 1950") kişinin açıklama alanına not olarak eklenir.
+                İşlem tek bir adımda geri alınamaz biçimde yeni kayıtlar oluşturur; büyük bir
+                dosya yüklemeden önce mevcut veritabanının yedeğini almanız önerilir.
+            </p>
+            <form asp-action="Import" method="post" enctype="multipart/form-data" class="d-flex gap-2">
+                <input type="file" name="gedcomFile" class="form-control" accept=".ged" required />
+                <button type="submit" class="btn btn-primary text-nowrap">İçe Aktar</button>
+            </form>
+        </div>
+    </div>
+}

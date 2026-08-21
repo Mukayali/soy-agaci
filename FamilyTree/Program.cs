@@ -53,6 +53,7 @@ builder.Services.AddScoped<IPhotoService, PhotoService>();
 builder.Services.AddScoped<IFamilyTreeService, FamilyTreeService>();
 builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IBackupService, BackupService>();
+builder.Services.AddScoped<IGedcomService, GedcomService>();
 
 builder.Services.Configure<FormOptions>(options =>
 {

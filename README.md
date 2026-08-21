@@ -28,9 +28,13 @@ Mimari kararlar ve geliştirme kuralları için bkz. [CLAUDE.md](./CLAUDE.md).
 - **Veri dışa aktarma**: Kişiler sayfasından mevcut arama filtresine göre CSV dışa aktarma.
 - **Yedekleme (mysqldump tabanlı)**: Admin-only `/Backup` sayfasından anlık `.sql` yedeği indirilebilir;
   düzenli/otomatik yedekleme için `scripts/backup.sh` betiği cron ile zamanlanabilir (bkz. aşağıda).
+- **GEDCOM içe/dışa aktarma**: `/Gedcom` sayfasından standart GEDCOM 5.5.1 formatında dışa aktarma
+  (tüm kullanıcılar) ve içe aktarma (Admin/Editor). Diğer soy ağacı programlarıyla (Ancestry,
+  MyHeritage, Gramps vb.) veri alışverişi sağlar; TC Kimlik No dışa aktarılmaz, belirsiz tarihler
+  (`ABT 1950` gibi) yanlış kesinlik oluşturmamak için açıklama alanına not olarak düşülür.
 
 Faz 1-6'nın tamamı tamamlandı — kalan işler artık CLAUDE.md Bölüm 50'deki gelecek özellikleri
-(GEDCOM, PDF/PNG dışa aktarma, gelişmiş raporlama vb.) kapsıyor.
+(PDF/PNG dışa aktarma, gelişmiş raporlama vb.) kapsıyor.
 
 ## Gereksinimler
 
@@ -118,10 +122,10 @@ Faz 1-6'nın tamamı tamamlandı — kalan işler artık CLAUDE.md Bölüm 50'de
 
 ```text
 FamilyTree/
-├── Controllers/     # Person, PersonApi, FamilyTree, FamilyTreeApi, Account, Users, AuditLog, Backup, Home
+├── Controllers/     # Person, PersonApi, FamilyTree, FamilyTreeApi, Account, Users, AuditLog, Backup, Gedcom, Home
 ├── Models/           # Person, PersonPhoto, SpouseRelationship, ApplicationUser, AuditLog, Gender
 ├── Data/              # ApplicationDbContext (IdentityDbContext<ApplicationUser>)
-├── Services/         # IPersonService / IPhotoService / IFamilyTreeService / IAuditLogService / IBackupService
+├── Services/         # IPersonService / IPhotoService / IFamilyTreeService / IAuditLogService / IBackupService / IGedcomService
 ├── ViewModels/
 ├── Views/
 ├── Migrations/

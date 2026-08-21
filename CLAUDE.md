@@ -1613,10 +1613,10 @@ Mimari aşağıdaki özelliklerin eklenmesine uygun olmalıdır:
 * Aile hikâyeleri
 * Aile kronolojisi
 * Harita üzerinde yaşam yerleri
-* GEDCOM import/export
+* ~~GEDCOM import/export~~ (uygulandı, bkz. Bölüm 51)
 * PDF soy ağacı
 * PNG/SVG soy ağacı dışa aktarma
-* Excel/CSV dışa aktarma
+* ~~Excel/CSV dışa aktarma~~ (CSV kısmı uygulandı — `PersonController.ExportCsv`; Excel formatı henüz yok)
 * Gelişmiş arama
 * Aile bazlı kullanıcı yetkilendirmesi
 
@@ -1624,21 +1624,26 @@ Mimari aşağıdaki özelliklerin eklenmesine uygun olmalıdır:
 
 # 51. GEDCOM Desteği
 
-İleride farklı soy ağacı uygulamalarıyla veri alışverişi yapılabilmesi için GEDCOM desteği eklenmesi değerlendirilebilir.
+**Durum: Uygulandı.** `/Gedcom` sayfası GEDCOM 5.5.1 formatında içe/dışa aktarma sağlar.
 
-Bu nedenle veri modeli yalnızca mevcut UI'a göre tasarlanmamalıdır.
+* **Dışa aktarma** (`IGedcomService.ExportAsync`, tüm authenticated kullanıcılar): tüm kişiler
+  INDI, anne/baba+çocuk grupları ile eş ilişkileri FAM kayıtları olarak yazılır. Anne/Baba
+  alanlarının kendisi zaten cinsiyet taşıdığı için HUSB/WIFE ataması doğrudan buradan yapılır;
+  eşleşen bir anne/baba çifti yoksa (yalnızca eş ilişkisi varsa) `Cinsiyet` alanına bakılır.
+  TC Kimlik No **hiçbir zaman** dışa aktarılmaz.
+* **İçe aktarma** (`IGedcomService.ImportAsync`, Admin/Editor): yüklenen `.ged` dosyası
+  ayrıştırılır, her INDI yeni bir `Person`, her FAM kaydı anne/baba ataması ve (varsa) bir
+  `SpouseRelationship` oluşturur. Tüm işlem tek bir DB transaction'ı içinde yapılır — bir hata
+  oluşursa hiçbir kayıt eklenmez. Yalnızca tam gün/ay/yıl içeren tarihler (`12 MAR 1950`)
+  kesin tarih olarak kaydedilir; belirsiz tarihler (`ABT 1950`, yalnızca yıl vb.) yanlış
+  kesinlik oluşturmamak için ham metin olarak kişinin Açıklama alanına not düşülür. Dosya
+  yükleme güvenliği için: uzantı (`.ged`), boyut limiti (10 MB) ve içerik kontrolü (ilk satır
+  `0 HEAD` ile başlamalı) uygulanır.
 
-Özellikle:
-
-```text
-Person
-Relationship
-Event
-Place
-Source
-```
-
-kavramları gelecekte desteklenebilecek şekilde mimari oluşturulmalıdır.
+Bu tasarım Bölüm 49'daki "temel ilişkilerden türet" prensibiyle uyumludur: GEDCOM'un
+Event/Place/Source gibi ek kavramları şu an desteklenmiyor (Person açıklama alanına not
+olarak düşülüyor), ancak veri modeli bunların ileride ayrı tablolar olarak eklenmesine
+engel olmayacak şekilde tasarlanmıştır.
 
 ---
 
