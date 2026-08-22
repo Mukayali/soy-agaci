@@ -314,7 +314,11 @@ public class PersonService : IPersonService
 
         if (!string.IsNullOrWhiteSpace(model.TcKimlikNo))
         {
-            var exists = await _context.Persons.AnyAsync(p => p.TcKimlikNo == model.TcKimlikNo);
+            // IgnoreQueryFilters: veritabanındaki UNIQUE index soft-delete durumundan habersizdir,
+            // bu yüzden yumuşak silinmiş bir kişinin TC'si de burada dikkate alınmalıdır — aksi
+            // halde bu kontrol "boş" der ama SaveChangesAsync sırasında MySqlException fırlar
+            // (bkz. Bölüm 6/23'teki TC benzersizlik kuralı, gerçek kullanıcı verisiyle bulunmuş bir hata).
+            var exists = await _context.Persons.IgnoreQueryFilters().AnyAsync(p => p.TcKimlikNo == model.TcKimlikNo);
             if (exists)
             {
                 return (false, null, "Bu TC Kimlik Numarası ile kayıtlı başka bir kişi bulunuyor.");
@@ -372,7 +376,10 @@ public class PersonService : IPersonService
 
         if (!string.IsNullOrWhiteSpace(model.TcKimlikNo))
         {
-            var exists = await _context.Persons.AnyAsync(p => p.TcKimlikNo == model.TcKimlikNo && p.Id != model.Id);
+            // IgnoreQueryFilters: bkz. CreateAsync'teki aynı isimli not — soft-delete filtresi
+            // UNIQUE index'i etkilemez, yumuşak silinmiş kayıtlar da burada sayılmalıdır.
+            var exists = await _context.Persons.IgnoreQueryFilters()
+                .AnyAsync(p => p.TcKimlikNo == model.TcKimlikNo && p.Id != model.Id);
             if (exists)
             {
                 return (false, "Bu TC Kimlik Numarası ile kayıtlı başka bir kişi bulunuyor.");

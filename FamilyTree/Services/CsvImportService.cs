@@ -214,9 +214,15 @@ public class CsvImportService : ICsvImportService
             .Distinct()
             .ToList();
 
+        // IgnoreQueryFilters: UNIQUE index soft-delete durumundan habersizdir, bu yüzden yumuşak
+        // silinmiş bir kişinin TC'si de burada dikkate alınmalı — aksi halde bu sorgu böyle bir
+        // TC'yi "kayıtlı değil" sanıp yeni bir Person eklemeye çalışır ve SaveChangesAsync
+        // sırasında MySqlException fırlatıp tüm CSV içe aktarma transaction'ını bozar (bkz.
+        // PersonService.CreateAsync/UpdateAsync'teki aynı isimli not, gerçek kullanıcı verisiyle
+        // bulunmuş bir hata).
         var existingByTc = referencedTcs.Count == 0
             ? new Dictionary<string, int>()
-            : await _context.Persons
+            : await _context.Persons.IgnoreQueryFilters()
                 .Where(p => p.TcKimlikNo != null && referencedTcs.Contains(p.TcKimlikNo))
                 .ToDictionaryAsync(p => p.TcKimlikNo!, p => p.Id);
 
