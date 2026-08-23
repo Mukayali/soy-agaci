@@ -1252,6 +1252,16 @@ Eş
 
 ilişkilerinde kullanılıp kullanılmadığı kontrol edilmelidir.
 
+**Geri getirme (restore) — Durum: Uygulandı.** Soft delete tek yönlü bir işlem olmamalıdır;
+Admin-only `/Person/Deleted` sayfası tüm yumuşak silinmiş kişileri (`IgnoreQueryFilters()` ile,
+Anne/Baba/Sülale bilgisiyle birlikte) listeler ve her satırda bir "Geri Getir" butonu sunar
+(`PersonService.RestoreAsync`, `IsDeleted = false` yapar). Kişiler sayfasında Admin için bu
+sayfaya bir bağlantı bulunur. Geri getirme öncesi TC Kimlik No çakışma kontrolü de
+`IgnoreQueryFilters()` ile yapılır — normalde CreateAsync/UpdateAsync artık soft-silinmiş
+kişilerin TC'lerini de benzersizlik kontrolüne dahil ettiğinden (bkz. Bölüm 6/23) bu çakışma
+oluşmamalı, ancak eski veri ihtimaline karşı savunma amaçlı bırakılmıştır. Her geri getirme
+işlemi audit log'a yazılır.
+
 ---
 
 # 38. Kodlama Kuralları

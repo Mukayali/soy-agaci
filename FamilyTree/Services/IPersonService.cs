@@ -19,4 +19,8 @@ public interface IPersonService
     Task<(bool Success, string? ErrorMessage, int ChildCount, int SpouseCount)> GetDeleteInfoAsync(int id);
 
     Task<bool> DeleteAsync(int id);
+
+    Task<List<PersonListItemViewModel>> GetDeletedAsync();
+
+    Task<(bool Success, string? ErrorMessage)> RestoreAsync(int id);
 }

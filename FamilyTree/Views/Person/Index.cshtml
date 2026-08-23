@@ -15,6 +15,10 @@
     <h2>Kişiler <span class="text-muted fs-6">(@Model.TotalCount kayıt)</span></h2>
     <div>
         <a asp-action="ExportCsv" asp-route-q="@Model.Query" class="btn btn-outline-secondary">CSV Dışa Aktar</a>
+        @if (User.IsInRole("Admin"))
+        {
+            <a asp-action="Deleted" class="btn btn-outline-secondary">Silinmiş Kişiler</a>
+        }
         @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
         {
             <button type="button" class="btn btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#csvImportPanel">CSV İçe Aktar</button>

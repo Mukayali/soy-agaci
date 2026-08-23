@@ -1,0 +1,54 @@
+@model List<PersonListItemViewModel>
+@{
+    ViewData["Title"] = "Silinmiş Kişiler";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Silinmiş Kişiler <span class="text-muted fs-6">(@Model.Count kayıt)</span></h2>
+    <a asp-action="Index" class="btn btn-outline-secondary">← Kişiler Listesine Dön</a>
+</div>
+
+<p class="text-muted">
+    Bu kişiler yumuşak silinmiştir (soft delete); veritabanından fiziksel olarak kaldırılmamıştır.
+    Aile ilişkileri (anne/baba/çocuk/eş bağları) korunmaya devam eder. "Geri Getir" ile kişiyi
+    tekrar aktif hale getirebilirsiniz.
+</p>
+
+@if (!Model.Any())
+{
+    <p class="text-muted">Silinmiş kişi bulunmuyor.</p>
+}
+else
+{
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Ad Soyad</th>
+                <th>Doğum</th>
+                <th>Ölüm</th>
+                <th>Anne</th>
+                <th>Baba</th>
+                <th>Sülale</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var p in Model)
+            {
+                <tr>
+                    <td>@p.AdSoyad</td>
+                    <td>@(p.DogumTarihi?.ToString("dd.MM.yyyy") ?? "-")</td>
+                    <td>@(p.OlumTarihi?.ToString("dd.MM.yyyy") ?? "-")</td>
+                    <td>@(p.AnneAdSoyad ?? "-")</td>
+                    <td>@(p.BabaAdSoyad ?? "-")</td>
+                    <td>@(p.SulaleAdi ?? "-")</td>
+                    <td class="text-end">
+                        <form asp-action="Restore" asp-route-id="@p.Id" method="post" class="d-inline" onsubmit="return confirm('@p.AdSoyad kişisini geri getirmek istediğinizden emin misiniz?');">
+                            <button type="submit" class="btn btn-sm btn-outline-success">Geri Getir</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

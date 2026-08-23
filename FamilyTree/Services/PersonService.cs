@@ -441,6 +441,50 @@ public class PersonService : IPersonService
         return true;
     }
 
+    public async Task<List<PersonListItemViewModel>> GetDeletedAsync()
+    {
+        var persons = await _context.Persons.AsNoTracking().IgnoreQueryFilters()
+            .Where(p => p.IsDeleted)
+            .Include(p => p.Anne).Include(p => p.Baba).Include(p => p.Sulale)
+            .OrderByDescending(p => p.UpdatedAt ?? p.CreatedAt)
+            .ToListAsync();
+
+        return persons.Select(p => ToListItem(p)).ToList();
+    }
+
+    public async Task<(bool Success, string? ErrorMessage)> RestoreAsync(int id)
+    {
+        var person = await _context.Persons.IgnoreQueryFilters().FirstOrDefaultAsync(p => p.Id == id);
+        if (person == null)
+        {
+            return (false, "Kişi bulunamadı.");
+        }
+
+        if (!person.IsDeleted)
+        {
+            return (false, "Kişi zaten aktif.");
+        }
+
+        // Normalde CreateAsync/UpdateAsync artık yumuşak silinmiş kişilerin TC'lerini de
+        // benzersizlik kontrolüne dahil ettiğinden (bkz. Bölüm 6/23) bu çakışma oluşmamalı;
+        // yine de eski veri veya doğrudan veritabanı müdahalesi ihtimaline karşı savunma amaçlı
+        // kontrol ediliyor.
+        if (!string.IsNullOrWhiteSpace(person.TcKimlikNo))
+        {
+            var collision = await _context.Persons.AnyAsync(p => p.TcKimlikNo == person.TcKimlikNo && p.Id != person.Id);
+            if (collision)
+            {
+                return (false, "Bu TC Kimlik Numarası şu anda aktif başka bir kişi tarafından kullanıldığından geri getirilemedi.");
+            }
+        }
+
+        person.IsDeleted = false;
+        person.UpdatedAt = DateTime.UtcNow;
+        await _context.SaveChangesAsync();
+
+        return (true, null);
+    }
+
     private async Task<(bool IsValid, string? ErrorMessage)> ValidateRelationshipAsync(int? personId, int? anneId, int? babaId)
     {
         if (anneId.HasValue && babaId.HasValue && anneId.Value == babaId.Value)

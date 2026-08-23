@@ -160,6 +160,33 @@ public class PersonController : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Deleted()
+    {
+        var persons = await _personService.GetDeletedAsync();
+        return View(persons);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> Restore(int id)
+    {
+        var (success, errorMessage) = await _personService.RestoreAsync(id);
+
+        if (!success)
+        {
+            TempData["ErrorMessage"] = errorMessage ?? "Kişi geri getirilemedi.";
+        }
+        else
+        {
+            await _auditLogService.LogAsync("Kişi geri getirildi", "Person", id);
+            TempData["SuccessMessage"] = "Kişi başarıyla geri getirildi.";
+        }
+
+        return RedirectToAction(nameof(Deleted));
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Roles = "Admin,Editor")]
