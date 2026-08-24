@@ -47,9 +47,11 @@
                 kayıtlı bir kişinin TC Kimlik No'suna eşleşerek anne/baba ilişkisini otomatik kurar.
                 Cinsiyet için <code>Erkek</code>/<code>Kadın</code> (veya E/K) kullanın; tarihler
                 <code>yyyy-aa-gg</code> (ör. 1990-05-05) veya <code>gg.aa.yyyy</code> formatında olabilir.
-                <code>DogumYeri</code> serbest metindir. <code>SulaleId</code>, kişiyi mevcut bir sülaleye
-                bağlamak için o sülalenin numarasıdır (<a asp-controller="Sulale" asp-action="Index">Sülaleler</a>
-                sayfasındaki Id sütunundan bulunabilir); eşleşen bir sülale bulunamazsa boş bırakılır.
+                <code>DogumYeri</code> serbest metindir. <code>SulaleId</code>, kişiyi mevcut bir veya
+                birden fazla sülaleye bağlamak için o sülale(ler)in numarasıdır — birden fazla sülale
+                için <code>;</code> ile ayırın (ör. <code>2;5</code>); numaralar
+                (<a asp-controller="Sulale" asp-action="Index">Sülaleler</a> sayfasındaki Id
+                sütunundan bulunabilir) eşleşmezse o sülale ataması yapılmadan devam edilir.
             </p>
             <p>
                 <a asp-action="CsvImportTemplate" class="btn btn-sm btn-outline-primary">Örnek Şablon İndir</a>
@@ -100,9 +102,16 @@ else
                     <td>@(p.AnneAdSoyad ?? "-")</td>
                     <td>@(p.BabaAdSoyad ?? "-")</td>
                     <td>
-                        @if (p.SulaleId.HasValue)
+                        @if (p.Sulaleler.Any())
                         {
-                            <a asp-action="Index" asp-route-sulaleId="@p.SulaleId">@p.SulaleAdi</a>
+                            @for (var i = 0; i < p.Sulaleler.Count; i++)
+                            {
+                                <a asp-action="Index" asp-route-sulaleId="@p.Sulaleler[i].Id">@p.Sulaleler[i].Ad</a>
+                                if (i < p.Sulaleler.Count - 1)
+                                {
+                                    @:,
+                                }
+                            }
                         }
                         else
                         {

@@ -22,13 +22,20 @@
         {
             <p class="text-muted mb-0">Doğum Yeri: @Model.DogumYeri</p>
         }
-        @if (Model.SulaleAdi != null)
+        @if (Model.Sulaleler.Any())
         {
             <p class="text-muted mb-0">
-                Sülale:
-                <a asp-controller="Person" asp-action="Index" asp-route-sulaleId="@Model.SulaleId">@Model.SulaleAdi</a>
-                ·
-                <a asp-controller="FamilyTree" asp-action="Sulale" asp-route-id="@Model.SulaleId">Sülale Soy Ağacı</a>
+                Sülale@(Model.Sulaleler.Count > 1 ? "ler" : ""):
+                @for (var i = 0; i < Model.Sulaleler.Count; i++)
+                {
+                    var s = Model.Sulaleler[i];
+                    <a asp-controller="Person" asp-action="Index" asp-route-sulaleId="@s.Id">@s.Ad</a>
+                    <a asp-controller="FamilyTree" asp-action="Sulale" asp-route-id="@s.Id" class="ms-1">(Soy Ağacı)</a>
+                    if (i < Model.Sulaleler.Count - 1)
+                    {
+                        @:&nbsp;·&nbsp;
+                    }
+                }
             </p>
         }
     </div>

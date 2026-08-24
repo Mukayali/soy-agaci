@@ -29,7 +29,7 @@ public class SulaleController : Controller
                 Id = s.Id,
                 Ad = s.Ad,
                 Aciklama = s.Aciklama,
-                UyeSayisi = s.Uyeler.Count,
+                UyeSayisi = s.PersonSulaleler.Count,
             })
             .ToListAsync();
 

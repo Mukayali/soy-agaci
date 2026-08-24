@@ -41,7 +41,7 @@ else
                     <td>@(p.OlumTarihi?.ToString("dd.MM.yyyy") ?? "-")</td>
                     <td>@(p.AnneAdSoyad ?? "-")</td>
                     <td>@(p.BabaAdSoyad ?? "-")</td>
-                    <td>@(p.SulaleAdi ?? "-")</td>
+                    <td>@(p.Sulaleler.Any() ? string.Join(", ", p.Sulaleler.Select(s => s.Ad)) : "-")</td>
                     <td class="text-end">
                         <form asp-action="Restore" asp-route-id="@p.Id" method="post" class="d-inline" onsubmit="return confirm('@p.AdSoyad kişisini geri getirmek istediğinizden emin misiniz?');">
                             <button type="submit" class="btn btn-sm btn-outline-success">Geri Getir</button>

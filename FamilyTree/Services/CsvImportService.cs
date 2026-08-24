@@ -36,7 +36,7 @@ public class CsvImportService : ICsvImportService
         public string? AnneTc { get; set; }
         public string? BabaTc { get; set; }
         public string? DogumYeri { get; set; }
-        public int? SulaleId { get; set; }
+        public List<int> SulaleIds { get; set; } = new();
         public int? NewPersonId { get; set; }
     }
 
@@ -177,17 +177,22 @@ public class CsvImportService : ICsvImportService
             var dogumYeriRaw = Field(cells, "dogumyeri");
             var dogumYeri = string.IsNullOrWhiteSpace(dogumYeriRaw) ? null : dogumYeriRaw.Trim();
 
+            // Bir kişi birden fazla sülalenin üyesi olabildiğinden (many-to-many, bkz. PersonSulale)
+            // bu sütun ";" ile ayrılmış birden fazla SulaleId kabul eder (ör. "2;5").
             var sulaleIdRaw = Field(cells, "sulaleid");
-            int? sulaleId = null;
+            var sulaleIds = new List<int>();
             if (!string.IsNullOrWhiteSpace(sulaleIdRaw))
             {
-                if (int.TryParse(sulaleIdRaw.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedSulaleId))
+                foreach (var part in sulaleIdRaw.Split(new[] { ';', ',' }, StringSplitOptions.RemoveEmptyEntries))
                 {
-                    sulaleId = parsedSulaleId;
-                }
-                else
-                {
-                    result.Warnings.Add($"Satır {lineNumber}: SulaleId değeri ('{sulaleIdRaw}') sayısal değil, boş bırakıldı.");
+                    if (int.TryParse(part.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsedSulaleId))
+                    {
+                        sulaleIds.Add(parsedSulaleId);
+                    }
+                    else
+                    {
+                        result.Warnings.Add($"Satır {lineNumber}: SulaleId değeri ('{part.Trim()}') sayısal değil, atlandı.");
+                    }
                 }
             }
 
@@ -203,7 +208,7 @@ public class CsvImportService : ICsvImportService
                 AnneTc = anneTc,
                 BabaTc = babaTc,
                 DogumYeri = dogumYeri,
-                SulaleId = sulaleId,
+                SulaleIds = sulaleIds.Distinct().ToList(),
             });
         }
 
@@ -227,8 +232,7 @@ public class CsvImportService : ICsvImportService
                 .ToDictionaryAsync(p => p.TcKimlikNo!, p => p.Id);
 
         var referencedSulaleIds = parsedRows
-            .Where(r => r.SulaleId.HasValue)
-            .Select(r => r.SulaleId!.Value)
+            .SelectMany(r => r.SulaleIds)
             .Distinct()
             .ToList();
 
@@ -242,10 +246,15 @@ public class CsvImportService : ICsvImportService
 
         foreach (var row in parsedRows)
         {
-            if (row.SulaleId.HasValue && !existingSulaleIds.Contains(row.SulaleId.Value))
+            var invalidIds = row.SulaleIds.Where(id => !existingSulaleIds.Contains(id)).ToList();
+            foreach (var invalidId in invalidIds)
             {
-                result.Warnings.Add($"Satır {row.LineNumber}: SulaleId {row.SulaleId.Value} bulunamadı, sülale ataması yapılmadı.");
-                row.SulaleId = null;
+                result.Warnings.Add($"Satır {row.LineNumber}: SulaleId {invalidId} bulunamadı, bu sülale ataması yapılmadı.");
+            }
+
+            if (invalidIds.Count > 0)
+            {
+                row.SulaleIds = row.SulaleIds.Except(invalidIds).ToList();
             }
         }
 
@@ -272,12 +281,21 @@ public class CsvImportService : ICsvImportService
                     DogumTarihi = row.DogumTarihi,
                     OlumTarihi = row.OlumTarihi,
                     DogumYeri = row.DogumYeri,
-                    SulaleId = row.SulaleId,
                     CreatedAt = DateTime.UtcNow,
                 };
 
                 _context.Persons.Add(person);
                 await _context.SaveChangesAsync();
+
+                foreach (var sId in row.SulaleIds)
+                {
+                    _context.PersonSulaleler.Add(new PersonSulale { PersonId = person.Id, SulaleId = sId });
+                }
+
+                if (row.SulaleIds.Count > 0)
+                {
+                    await _context.SaveChangesAsync();
+                }
 
                 result.PersonsCreated++;
                 row.NewPersonId = person.Id;

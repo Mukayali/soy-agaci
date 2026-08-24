@@ -1740,13 +1740,14 @@ bağlantısı (`PersonController.CsvImportTemplate`) doğru sütun sırasını v
 (açıkça tekrarlı basamaklı) örnek TC Kimlik No'lar içeren bir başlangıç dosyası sağlar.
 
 `DogumYeri` serbest metindir, doğrudan `Person.DogumYeri` alanına yazılır. `SulaleId`,
-kişiyi (bkz. Bölüm 51.3) mevcut bir sülaleye bağlamak için o sülalenin sayısal `Id`'sidir —
-GEDCOM/anne-baba eşleştirmesinin aksine burada bir isim eşleştirmesi **yapılmaz**, çünkü
-sülale adları CSV'de yer almaz ve isim eşleştirmesi yanlış sülaleye bağlanma riski taşırdı.
-Kullanıcı doğru Id'yi `/Sulale` sayfasındaki (Bölüm 51.3'te eklenen) Id sütunundan bulur.
-Referans verilen `SulaleId` veritabanında yoksa satır atlanmaz, yalnızca sülale ataması
-boş bırakılıp bir uyarı eklenir (diğer alanlardaki "yanlış kesinlik oluşturma yerine alanı
-boş bırak" prensibiyle tutarlı).
+kişiyi (bkz. Bölüm 51.3 — many-to-many `PersonSulale` ilişkisi) bir veya birden fazla
+sülaleye bağlamak için o sülale(ler)in sayısal `Id`'sidir; birden fazla sülale `;` (veya `,`)
+ile ayrılır (ör. `2;5`). GEDCOM/anne-baba eşleştirmesinin aksine burada bir isim eşleştirmesi
+**yapılmaz**, çünkü sülale adları CSV'de yer almaz ve isim eşleştirmesi yanlış sülaleye
+bağlanma riski taşırdı. Kullanıcı doğru Id'yi `/Sulale` sayfasındaki Id sütunundan bulur.
+Referans verilen numaralardan biri veritabanında yoksa satır atlanmaz, yalnızca o tekil
+sülale ataması boş bırakılıp bir uyarı eklenir (diğer geçerli numaralar yine de uygulanır —
+diğer alanlardaki "yanlış kesinlik oluşturma yerine alanı boş bırak" prensibiyle tutarlı).
 
 **Anne/Baba eşleştirme mantığı:** `AnneTC`/`BabaTC` sütunları, dosyadaki başka bir satırın
 `TCKimlikNo`'suna **veya** veritabanında zaten kayıtlı bir kişinin TC'sine eşleşerek
@@ -1778,16 +1779,45 @@ her biri beklenen davranışı (satır eklendi / atlandı / alan boş bırakıld
 
 # 51.3. Sülale (Aile Grubu) ve Doğum Yeri
 
-**Durum: Uygulandı.** `Person` modeline opsiyonel bir `SulaleId` (bkz. yeni `Sulale` varlığı:
-`Id`, `Ad` [benzersiz], `Aciklama`) ve bir `DogumYeri` (serbest metin) alanı eklendi.
+**Durum: Uygulandı.** `Person` ile `Sulale` arasında çoktan-çoğa (many-to-many) bir ilişki
+vardır — bir kişi birden fazla sülalenin üyesi olabilir (ör. hem baba tarafı hem anne tarafı
+sülalesi). Bu ilişki `PersonSulale` adında açık bir join varlığı (`Id`, `PersonId`, `SulaleId`,
+`CreatedAt`) ile modellenmiştir; `(PersonId, SulaleId)` üzerinde benzersiz index bulunur, her
+iki FK de `DeleteBehavior.Cascade` ile tanımlıdır (join satırının kendisi ilişkiyi temsil
+ettiğinden, `PersonPhoto`'daki `SetNull` yaklaşımının aksine burada satırın kendisi silinir —
+kişi veya sülale hard-delete edilmeden bu asla otomatik tetiklenmez, çünkü Person yalnızca
+soft-delete edilir). `PersonSulale` üzerinde `Person`'ınkiyle tutarlı bir global query filtresi
+(`!ps.Person.IsDeleted`) tanımlıdır; bu, Bölüm 8.1'de belgelenen "Include + global query
+filter" hatasının aynısının `PersonSulale` için de oluşmasını (yumuşak silinmiş bir kişinin
+sülale bağlarının sessizce görünmez olması) baştan önler. Ayrıca `Person` modeline bir
+`DogumYeri` (serbest metin) alanı eklendi.
+
+> **Geçmiş not:** İlk sürümde `Person.SulaleId` tekil (bire-çok) bir alandı. Kişi başına
+> birden fazla sülale ihtiyacı ortaya çıkınca `MultiSulaleSupport` migration'ı ile many-to-many
+> yapıya geçildi. Bu migration'ın EF Core'un varsayılan olarak ürettiği sıra (önce
+> `Persons.SulaleId` sütununu düşür, sonra yeni tabloyu oluştur) veri kaybına yol açacağından
+> elle yeniden sıralandı: önce `PersonSulaleler` tablosu oluşturulur, `INSERT ... SELECT` ile
+> mevcut `Persons.SulaleId` değerleri buraya kopyalanır, ancak SONRA eski sütun/FK/index
+> düşürülür. Prodüksiyona uygulanmadan önce migration, gerçek verinin `mysqldump` ile alınmış
+> tam bir kopyası üzerinde ayrı bir test veritabanında denenmiş (182 sülale ataması, hiç veri
+> kaybı olmadan `PersonSulaleler`'e taşındığı doğrulanmış) ve yalnızca bu doğrulamadan sonra
+> gerçek veritabanına uygulanmıştır.
 
 * **Sülale yönetimi**: `/Sulale` sayfası (Admin/Editor oluşturur/düzenler, yalnızca Admin
   siler) sülaleleri bağımsız olarak yönetir. Bir sülale silindiğinde üyelerinin kaydı
-  silinmez, yalnızca `SulaleId` alanı `NULL` olur (`DeleteBehavior.SetNull`) — GEDCOM/CSV
-  içe aktarmadaki "etiket kaldır, veriyi kaybetme" prensibiyle aynı yaklaşım.
-* **Kişi ekleme/düzenleme**: Sülale, `Person/Create` ve `Person/Edit` formlarında bir
-  pulldown (`<select>`) olarak seçilir; listede yoksa "Sülaleler" sayfasına yönlendiren bir
-  bağlantı gösterilir. Doğum Yeri serbest metin girişi olarak eklenmiştir.
+  silinmez, yalnızca o sülaleye ait `PersonSulale` satırları cascade ile kalkar (kişinin
+  varsa diğer sülale üyelikleri etkilenmez) — GEDCOM/CSV içe aktarmadaki "etiket kaldır,
+  veriyi kaybetme" prensibiyle aynı yaklaşım.
+* **Kişi ekleme/düzenleme**: Sülale, `Person/Create` ve `Person/Edit` formlarında çoklu
+  seçime izin veren bir `<select multiple>` olarak seçilir (Ctrl/Cmd ile birden fazla
+  seçim); listede yoksa "Sülaleler" sayfasına yönlendiren bir bağlantı gösterilir.
+  `PersonService.UpdateAsync` düzenleme sırasında seçili küme ile mevcut `PersonSulale`
+  satırlarını senkronize eder (artık seçili olmayanları kaldırır, yenileri ekler). Doğum
+  Yeri serbest metin girişi olarak eklenmiştir.
+* **CSV toplu içe aktarma**: `SulaleId` sütunu `;` (veya `,`) ile ayrılmış birden fazla
+  sülale numarası kabul eder (ör. `2;5`); geçersiz/bulunamayan numaralar satırı
+  başarısız kılmaz, yalnızca o tekil sülale ataması atlanıp bir uyarı eklenir (bkz.
+  Bölüm 51.2).
 * **Kişi listesi filtresi**: `/Person?sulaleId=X` o sülaledeki kişileri listeler (Sülale
   Detay sayfasındaki üye sayısı bağlantısından ve Sülaleler sayfasından erişilir).
 * **Soy ağacında tüm sülaleyi gösterme**: `/FamilyTree/Sulale/{sulaleId}` (ve sayfa

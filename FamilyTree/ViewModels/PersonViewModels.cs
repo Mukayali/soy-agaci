@@ -4,6 +4,12 @@ using Microsoft.AspNetCore.Http;
 
 namespace FamilyTree.ViewModels;
 
+public class SulaleTagViewModel
+{
+    public int Id { get; set; }
+    public string Ad { get; set; } = string.Empty;
+}
+
 public class PersonListItemViewModel
 {
     public int Id { get; set; }
@@ -13,8 +19,7 @@ public class PersonListItemViewModel
     public string? AnneAdSoyad { get; set; }
     public string? BabaAdSoyad { get; set; }
     public string? PrimaryPhotoPath { get; set; }
-    public int? SulaleId { get; set; }
-    public string? SulaleAdi { get; set; }
+    public List<SulaleTagViewModel> Sulaleler { get; set; } = new();
 
     /// <summary>Bu kişinin merkez kişiye göre akrabalık etiketi (ör. "Dede (Anne tarafı)"). Sadece bazı listelerde kullanılır.</summary>
     public string? Rol { get; set; }
@@ -71,8 +76,8 @@ public class PersonCreateViewModel : IValidatableObject
     [MaxLength(200)]
     public string? DogumYeri { get; set; }
 
-    [Display(Name = "Sülale")]
-    public int? SulaleId { get; set; }
+    [Display(Name = "Sülaleler")]
+    public List<int> SulaleIds { get; set; } = new();
 
     [Display(Name = "Anne")]
     public int? AnneId { get; set; }
@@ -149,8 +154,7 @@ public class PersonDetailViewModel
     public bool Hayatta => OlumTarihi == null;
     public string? Aciklama { get; set; }
     public string? DogumYeri { get; set; }
-    public int? SulaleId { get; set; }
-    public string? SulaleAdi { get; set; }
+    public List<SulaleTagViewModel> Sulaleler { get; set; } = new();
 
     public PersonListItemViewModel? Anne { get; set; }
     public PersonListItemViewModel? Baba { get; set; }

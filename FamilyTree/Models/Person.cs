@@ -31,9 +31,7 @@ public class Person
 
     public Gender? Cinsiyet { get; set; }
 
-    public int? SulaleId { get; set; }
-
-    public Sulale? Sulale { get; set; }
+    public ICollection<PersonSulale> PersonSulaleler { get; set; } = new List<PersonSulale>();
 
     public int? AnneId { get; set; }
 

@@ -421,7 +421,7 @@ public class FamilyTreeService : IFamilyTreeService
         var members = await _context.Persons
             .AsNoTracking()
             .Include(p => p.Photos)
-            .Where(p => p.SulaleId == sulaleId)
+            .Where(p => p.PersonSulaleler.Any(ps => ps.SulaleId == sulaleId))
             .ToListAsync();
 
         var graph = new FamilyTreeGraphDto();

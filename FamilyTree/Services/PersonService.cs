@@ -27,7 +27,7 @@ public class PersonService : IPersonService
             .Include(p => p.Baba).ThenInclude(b => b!.Anne)
             .Include(p => p.Baba).ThenInclude(b => b!.Baba)
             .Include(p => p.Photos)
-            .Include(p => p.Sulale)
+            .Include(p => p.PersonSulaleler).ThenInclude(ps => ps.Sulale)
             .Include(p => p.SpouseRelationshipsAsPerson1).ThenInclude(sr => sr.Person2)
             .Include(p => p.SpouseRelationshipsAsPerson2).ThenInclude(sr => sr.Person1)
             .FirstOrDefaultAsync(p => p.Id == id);
@@ -144,8 +144,10 @@ public class PersonService : IPersonService
             OlumTarihi = person.OlumTarihi,
             Aciklama = person.Aciklama,
             DogumYeri = person.DogumYeri,
-            SulaleId = person.SulaleId,
-            SulaleAdi = person.Sulale?.Ad,
+            Sulaleler = person.PersonSulaleler
+                .Select(ps => new SulaleTagViewModel { Id = ps.SulaleId, Ad = ps.Sulale.Ad })
+                .OrderBy(s => s.Ad)
+                .ToList(),
             Anne = person.Anne == null ? null : ToListItem(person.Anne),
             Baba = person.Baba == null ? null : ToListItem(person.Baba),
             Esler = spouses.Select(p => ToListItem(p)).ToList(),
@@ -182,6 +184,7 @@ public class PersonService : IPersonService
             .Include(p => p.Photos)
             .Include(p => p.Anne)
             .Include(p => p.Baba)
+            .Include(p => p.PersonSulaleler)
             .FirstOrDefaultAsync(p => p.Id == id);
 
         if (person == null)
@@ -199,7 +202,7 @@ public class PersonService : IPersonService
             OlumTarihi = person.OlumTarihi,
             Cinsiyet = person.Cinsiyet,
             DogumYeri = person.DogumYeri,
-            SulaleId = person.SulaleId,
+            SulaleIds = person.PersonSulaleler.Select(ps => ps.SulaleId).ToList(),
             AnneId = person.AnneId,
             BabaId = person.BabaId,
             AnneAdSoyad = person.Anne == null ? null : $"{person.Anne.Ad} {person.Anne.Soyad}",
@@ -224,7 +227,8 @@ public class PersonService : IPersonService
         page = Math.Max(1, page);
         pageSize = Math.Clamp(pageSize, 1, 100);
 
-        var baseQuery = _context.Persons.AsNoTracking().Include(p => p.Anne).Include(p => p.Baba).Include(p => p.Sulale).AsQueryable();
+        var baseQuery = _context.Persons.AsNoTracking().Include(p => p.Anne).Include(p => p.Baba)
+            .Include(p => p.PersonSulaleler).ThenInclude(ps => ps.Sulale).AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(query))
         {
@@ -238,7 +242,7 @@ public class PersonService : IPersonService
 
         if (sulaleId.HasValue)
         {
-            baseQuery = baseQuery.Where(p => p.SulaleId == sulaleId);
+            baseQuery = baseQuery.Where(p => p.PersonSulaleler.Any(ps => ps.SulaleId == sulaleId));
         }
 
         var totalCount = await baseQuery.CountAsync();
@@ -307,9 +311,14 @@ public class PersonService : IPersonService
             return (false, null, validation.ErrorMessage);
         }
 
-        if (model.SulaleId.HasValue && !await _context.Sulaleler.AnyAsync(s => s.Id == model.SulaleId))
+        var sulaleIds = (model.SulaleIds ?? new List<int>()).Distinct().ToList();
+        if (sulaleIds.Count > 0)
         {
-            return (false, null, "Seçilen sülale bulunamadı.");
+            var validSulaleCount = await _context.Sulaleler.CountAsync(s => sulaleIds.Contains(s.Id));
+            if (validSulaleCount != sulaleIds.Count)
+            {
+                return (false, null, "Seçilen sülalelerden biri veya birden fazlası bulunamadı.");
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(model.TcKimlikNo))
@@ -334,7 +343,6 @@ public class PersonService : IPersonService
             OlumTarihi = model.OlumTarihi,
             Cinsiyet = model.Cinsiyet,
             DogumYeri = string.IsNullOrWhiteSpace(model.DogumYeri) ? null : model.DogumYeri.Trim(),
-            SulaleId = model.SulaleId,
             AnneId = model.AnneId,
             BabaId = model.BabaId,
             Aciklama = model.Aciklama,
@@ -343,6 +351,16 @@ public class PersonService : IPersonService
 
         _context.Persons.Add(person);
         await _context.SaveChangesAsync();
+
+        foreach (var sId in sulaleIds)
+        {
+            _context.PersonSulaleler.Add(new PersonSulale { PersonId = person.Id, SulaleId = sId });
+        }
+
+        if (sulaleIds.Count > 0)
+        {
+            await _context.SaveChangesAsync();
+        }
 
         if (model.Photos != null)
         {
@@ -369,9 +387,14 @@ public class PersonService : IPersonService
             return (false, validation.ErrorMessage);
         }
 
-        if (model.SulaleId.HasValue && !await _context.Sulaleler.AnyAsync(s => s.Id == model.SulaleId))
+        var sulaleIds = (model.SulaleIds ?? new List<int>()).Distinct().ToList();
+        if (sulaleIds.Count > 0)
         {
-            return (false, "Seçilen sülale bulunamadı.");
+            var validSulaleCount = await _context.Sulaleler.CountAsync(s => sulaleIds.Contains(s.Id));
+            if (validSulaleCount != sulaleIds.Count)
+            {
+                return (false, "Seçilen sülalelerden biri veya birden fazlası bulunamadı.");
+            }
         }
 
         if (!string.IsNullOrWhiteSpace(model.TcKimlikNo))
@@ -393,11 +416,22 @@ public class PersonService : IPersonService
         person.OlumTarihi = model.OlumTarihi;
         person.Cinsiyet = model.Cinsiyet;
         person.DogumYeri = string.IsNullOrWhiteSpace(model.DogumYeri) ? null : model.DogumYeri.Trim();
-        person.SulaleId = model.SulaleId;
         person.AnneId = model.AnneId;
         person.BabaId = model.BabaId;
         person.Aciklama = model.Aciklama;
         person.UpdatedAt = DateTime.UtcNow;
+
+        // Sülale üyeliklerini istenen kümeyle senkronize et: artık seçili olmayanları kaldır,
+        // yeni seçilenleri ekle. IgnoreQueryFilters: kişi burada zaten aktif olduğundan filtre
+        // fark etmez, ama tam doğruluk için tutarlı bırakıldı.
+        var existingLinks = await _context.PersonSulaleler.IgnoreQueryFilters()
+            .Where(ps => ps.PersonId == person.Id).ToListAsync();
+        var existingIds = existingLinks.Select(l => l.SulaleId).ToHashSet();
+        var desiredIds = sulaleIds.ToHashSet();
+
+        _context.PersonSulaleler.RemoveRange(existingLinks.Where(l => !desiredIds.Contains(l.SulaleId)));
+        _context.PersonSulaleler.AddRange(desiredIds.Where(sId => !existingIds.Contains(sId))
+            .Select(sId => new PersonSulale { PersonId = person.Id, SulaleId = sId }));
 
         await _context.SaveChangesAsync();
 
@@ -445,7 +479,8 @@ public class PersonService : IPersonService
     {
         var persons = await _context.Persons.AsNoTracking().IgnoreQueryFilters()
             .Where(p => p.IsDeleted)
-            .Include(p => p.Anne).Include(p => p.Baba).Include(p => p.Sulale)
+            .Include(p => p.Anne).Include(p => p.Baba)
+            .Include(p => p.PersonSulaleler).ThenInclude(ps => ps.Sulale)
             .OrderByDescending(p => p.UpdatedAt ?? p.CreatedAt)
             .ToListAsync();
 
@@ -583,8 +618,11 @@ public class PersonService : IPersonService
         AnneAdSoyad = p.Anne == null ? null : $"{p.Anne.Ad} {p.Anne.Soyad}",
         BabaAdSoyad = p.Baba == null ? null : $"{p.Baba.Ad} {p.Baba.Soyad}",
         Rol = rol,
-        SulaleId = p.SulaleId,
-        SulaleAdi = p.Sulale?.Ad,
+        Sulaleler = p.PersonSulaleler
+            .Where(ps => ps.Sulale != null)
+            .Select(ps => new SulaleTagViewModel { Id = ps.SulaleId, Ad = ps.Sulale.Ad })
+            .OrderBy(s => s.Ad)
+            .ToList(),
     };
 
     private static string? MaskTc(string? tc)

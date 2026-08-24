@@ -21,6 +21,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<Sulale> Sulaleler => Set<Sulale>();
 
+    public DbSet<PersonSulale> PersonSulaleler => Set<PersonSulale>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -47,18 +49,34 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
                 .WithMany(p => p.BabaCocuklari)
                 .HasForeignKey(p => p.BabaId)
                 .OnDelete(DeleteBehavior.Restrict);
-
-            entity.HasIndex(p => p.SulaleId);
-
-            entity.HasOne(p => p.Sulale)
-                .WithMany(s => s.Uyeler)
-                .HasForeignKey(p => p.SulaleId)
-                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<Sulale>(entity =>
         {
             entity.HasIndex(s => s.Ad).IsUnique();
+        });
+
+        modelBuilder.Entity<PersonSulale>(entity =>
+        {
+            // Bir kişi aynı sülaleye iki kez eklenemez; birden fazla FARKLI sülaleye
+            // eklenebilmesi (many-to-many) bu tablonun asıl amacıdır.
+            entity.HasIndex(ps => new { ps.PersonId, ps.SulaleId }).IsUnique();
+
+            // Person üzerindeki soft-delete filtresiyle tutarlı: yumuşak silinmiş bir
+            // kişinin sülale bağlantıları da varsayılan sorgularda görünmez (bkz. Bölüm 8.1'de
+            // belgelenen Include + global query filter bulgusu — burada filtre PersonSulale'e
+            // açıkça tanımlanarak aynı sınıf hatanın tekrarlanması önlendi).
+            entity.HasQueryFilter(ps => !ps.Person.IsDeleted);
+
+            entity.HasOne(ps => ps.Person)
+                .WithMany(p => p.PersonSulaleler)
+                .HasForeignKey(ps => ps.PersonId)
+                .OnDelete(DeleteBehavior.Cascade);
+
+            entity.HasOne(ps => ps.Sulale)
+                .WithMany(s => s.PersonSulaleler)
+                .HasForeignKey(ps => ps.SulaleId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
 
         modelBuilder.Entity<PersonPhoto>(entity =>
