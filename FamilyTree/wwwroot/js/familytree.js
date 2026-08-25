@@ -6,10 +6,10 @@
         return;
     }
 
-    var CARD_W = 240;
-    var CARD_H = 128;
-    var SPACING_X = 280;
-    var SPACING_Y = 220;
+    var CARD_W = 270;
+    var CARD_H = 136;
+    var SPACING_X = 310;
+    var SPACING_Y = 228;
 
     var PHOTO_X = 12;
     var PHOTO_Y = 12;
@@ -290,16 +290,16 @@
         nodeEnter.append('text')
             .attr('class', 'name-line1')
             .attr('x', TEXT_X)
-            .attr('y', CARD_H / 2 - 16)
-            .attr('font-size', 19)
+            .attr('y', CARD_H / 2 - 15)
+            .attr('font-size', 15)
             .attr('font-weight', '700')
             .attr('fill', '#212121');
 
         nodeEnter.append('text')
             .attr('class', 'name-line2')
             .attr('x', TEXT_X)
-            .attr('y', CARD_H / 2 + 6)
-            .attr('font-size', 19)
+            .attr('y', CARD_H / 2 + 4)
+            .attr('font-size', 15)
             .attr('font-weight', '700')
             .attr('fill', '#212121');
 
@@ -336,8 +336,8 @@
             .attr('stroke-width', function (d) { return d.isCenter ? 4 : 2.5; })
             .attr('stroke-dasharray', function (d) { return d.alive ? null : '9,6'; });
 
-        merged.select('text.name-line1').text(function (d) { return truncate(d.ad || d.name, 13); });
-        merged.select('text.name-line2').text(function (d) { return truncate(d.soyad || '', 13); });
+        merged.select('text.name-line1').text(function (d) { return truncate(d.ad || d.name, 16); });
+        merged.select('text.name-line2').text(function (d) { return truncate(d.soyad || '', 16); });
         merged.select('text.years-text').text(personYears);
         merged.select('text.role-badge').text(function (d) { return d.isCenter ? '' : d.role; });
 
