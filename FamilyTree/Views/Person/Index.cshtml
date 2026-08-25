@@ -43,8 +43,12 @@
             <p class="text-muted">
                 Sütunlar: <code>TCKimlikNo, Ad, Soyad, Cinsiyet, DogumTarihi, OlumTarihi, AnneTC, BabaTC, DogumYeri, SulaleId</code>.
                 <code>Ad</code> ve <code>Soyad</code> zorunludur, diğerleri opsiyoneldir.
+                <strong><code>TCKimlikNo</code> zaten sistemde kayıtlı bir kişiye aitse yeni kişi
+                oluşturulmaz, o kişi satırdaki bilgilerle güncellenir</strong> (upsert) — satırda
+                boş bırakılan alanlar kişinin mevcut değerini korur, üzerine yazılmaz.
                 <code>AnneTC</code>/<code>BabaTC</code>, dosyadaki başka bir satırın veya sistemde zaten
-                kayıtlı bir kişinin TC Kimlik No'suna eşleşerek anne/baba ilişkisini otomatik kurar.
+                kayıtlı bir kişinin TC Kimlik No'suna eşleşerek anne/baba ilişkisini otomatik kurar
+                (bu, güncellenen satırlar için de geçerlidir).
                 Cinsiyet için <code>Erkek</code>/<code>Kadın</code> (veya E/K) kullanın; tarihler
                 <code>yyyy-aa-gg</code> (ör. 1990-05-05) veya <code>gg.aa.yyyy</code> formatında olabilir.
                 <code>DogumYeri</code> serbest metindir. <code>SulaleId</code>, kişiyi mevcut bir veya

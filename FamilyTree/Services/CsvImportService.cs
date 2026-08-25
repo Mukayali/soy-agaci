@@ -224,12 +224,15 @@ public class CsvImportService : ICsvImportService
         // TC'yi "kayıtlı değil" sanıp yeni bir Person eklemeye çalışır ve SaveChangesAsync
         // sırasında MySqlException fırlatıp tüm CSV içe aktarma transaction'ını bozar (bkz.
         // PersonService.CreateAsync/UpdateAsync'teki aynı isimli not, gerçek kullanıcı verisiyle
-        // bulunmuş bir hata).
-        var existingByTc = referencedTcs.Count == 0
-            ? new Dictionary<string, int>()
+        // bulunmuş bir hata). Tracking açık (AsNoTracking değil): eşleşen TC'ler aşağıda
+        // doğrudan güncellenip SaveChangesAsync ile kalıcı hale getirilecek.
+        var existingPersonsByTc = referencedTcs.Count == 0
+            ? new Dictionary<string, Person>()
             : await _context.Persons.IgnoreQueryFilters()
                 .Where(p => p.TcKimlikNo != null && referencedTcs.Contains(p.TcKimlikNo))
-                .ToDictionaryAsync(p => p.TcKimlikNo!, p => p.Id);
+                .ToDictionaryAsync(p => p.TcKimlikNo!, p => p);
+
+        var existingByTc = existingPersonsByTc.ToDictionary(kv => kv.Key, kv => kv.Value.Id);
 
         var referencedSulaleIds = parsedRows
             .SelectMany(r => r.SulaleIds)
@@ -266,9 +269,59 @@ public class CsvImportService : ICsvImportService
 
             foreach (var row in parsedRows)
             {
-                if (row.Tc != null && existingByTc.ContainsKey(row.Tc))
+                if (row.Tc != null && existingPersonsByTc.TryGetValue(row.Tc, out var existingPerson))
                 {
-                    result.Warnings.Add($"Satır {row.LineNumber}: TC {MaskTc(row.Tc)} zaten kayıtlı, yeni kişi oluşturulmadı (mevcut kişi anne/baba referanslarında kullanılabilir).");
+                    if (existingPerson.IsDeleted)
+                    {
+                        result.Warnings.Add($"Satır {row.LineNumber}: TC {MaskTc(row.Tc)} silinmiş bir kişiye ait, güncellenmedi (önce Silinmiş Kişiler sayfasından geri getirin).");
+                        continue;
+                    }
+
+                    // Upsert: satırda dolu olan alanlar mevcut kişinin üzerine yazılır, boş
+                    // bırakılan alanlar (ör. bir yenileme CSV'sinde yalnızca ölüm tarihi
+                    // güncelleniyorsa) mevcut değeri korur — CSV'nin diğer alanlarındaki
+                    // "yanlış kesinlik oluşturma yerine mevcut/boş bırak" prensibiyle tutarlı.
+                    existingPerson.Ad = row.Ad;
+                    existingPerson.Soyad = row.Soyad;
+                    if (row.Cinsiyet.HasValue)
+                    {
+                        existingPerson.Cinsiyet = row.Cinsiyet;
+                    }
+
+                    if (row.DogumTarihi.HasValue)
+                    {
+                        existingPerson.DogumTarihi = row.DogumTarihi;
+                    }
+
+                    if (row.OlumTarihi.HasValue)
+                    {
+                        existingPerson.OlumTarihi = row.OlumTarihi;
+                    }
+
+                    if (row.DogumYeri != null)
+                    {
+                        existingPerson.DogumYeri = row.DogumYeri;
+                    }
+
+                    existingPerson.UpdatedAt = DateTime.UtcNow;
+
+                    if (row.SulaleIds.Count > 0)
+                    {
+                        var alreadyMember = await _context.PersonSulaleler.IgnoreQueryFilters()
+                            .Where(ps => ps.PersonId == existingPerson.Id && row.SulaleIds.Contains(ps.SulaleId))
+                            .Select(ps => ps.SulaleId)
+                            .ToListAsync();
+
+                        foreach (var sId in row.SulaleIds.Except(alreadyMember))
+                        {
+                            _context.PersonSulaleler.Add(new PersonSulale { PersonId = existingPerson.Id, SulaleId = sId });
+                        }
+                    }
+
+                    await _context.SaveChangesAsync();
+
+                    result.PersonsUpdated++;
+                    row.NewPersonId = existingPerson.Id;
                     continue;
                 }
 

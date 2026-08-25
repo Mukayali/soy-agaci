@@ -320,11 +320,11 @@ public class PersonController : Controller
         }
 
         await _auditLogService.LogAsync(
-            $"CSV içe aktarıldı ({result.PersonsCreated} kişi, {result.RelationshipsLinked} anne/baba ilişkisi)",
+            $"CSV içe aktarıldı ({result.PersonsCreated} kişi eklendi, {result.PersonsUpdated} kişi güncellendi, {result.RelationshipsLinked} anne/baba ilişkisi)",
             "Person");
 
         TempData["SuccessMessage"] =
-            $"{result.PersonsCreated} kişi eklendi, {result.RelationshipsLinked} anne/baba ilişkisi kuruldu.";
+            $"{result.PersonsCreated} kişi eklendi, {result.PersonsUpdated} kişi güncellendi, {result.RelationshipsLinked} anne/baba ilişkisi kuruldu.";
 
         if (result.Warnings.Count > 0)
         {

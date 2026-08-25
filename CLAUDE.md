@@ -1752,28 +1752,49 @@ diğer alanlardaki "yanlış kesinlik oluşturma yerine alanı boş bırak" pren
 **Anne/Baba eşleştirme mantığı:** `AnneTC`/`BabaTC` sütunları, dosyadaki başka bir satırın
 `TCKimlikNo`'suna **veya** veritabanında zaten kayıtlı bir kişinin TC'sine eşleşerek
 ilişkiyi otomatik kurar (`CsvImportService.ImportAsync`, iki geçişli: önce tüm kişiler
-oluşturulur ve TC→Id eşlemesi çıkarılır, sonra bu eşlemeyle anne/baba bağlanır). Bu, GEDCOM
+oluşturulur/güncellenir ve TC→Id eşlemesi çıkarılır, sonra bu eşlemeyle anne/baba bağlanır —
+bu ikinci geçiş hem yeni oluşturulan hem güncellenen satırlar için çalışır). Bu, GEDCOM
 içe aktarmadaki xref eşleştirme mantığının TC Kimlik No üzerinden kurulmuş halidir.
+
+**Upsert davranışı — Durum: Uygulandı.** TC veritabanında zaten **aktif** bir kişiye aitse,
+yeni kişi oluşturulmaz; bunun yerine o kişi satırdaki bilgilerle güncellenir. Güncelleme
+alan-bazında kısmidir: satırda **dolu** olan bir alan mevcut değerin üzerine yazar, **boş**
+bırakılan bir alan kişinin mevcut değerini korur (silmez/sıfırlamaz). Bu tasarım kasıtlıdır —
+kullanıcı yalnızca birkaç sütunu (ör. sadece `OlumTarihi`) içeren küçük bir "güncelleme
+CSV'si" yükleyebilmeli, bu diğer tüm alanları boşa düşürmemelidir; diğer alanlardaki
+"yanlış kesinlik oluşturma yerine mevcut/boş bırak" prensibiyle tutarlıdır. `Ad`/`Soyad`
+bu kuralın dışındadır (her zaman satırdaki değerle güncellenir) çünkü zaten satır düzeyinde
+zorunlu alanlardır. `SulaleId` güncellemede yalnızca **ekleme** yapar, mevcut sülale
+üyeliklerini kaldırmaz (aksi halde sütunu boş bırakılan bir güncelleme satırı kişinin tüm
+sülale bağlarını sessizce silebilirdi). TC'nin ait olduğu kişi **soft-silinmişse**
+güncelleme yapılmaz, satır atlanıp bir uyarı eklenir (önce `/Person/Deleted`'ten geri
+getirilmesi istenir) — silinmiş bir kaydı CSV üzerinden sessizce canlandırmak, kullanıcının
+`/Person/Deleted` üzerinden bilinçli olarak yaptığı geri getirme akışını (bkz. Bölüm 37)
+atlayacağından kasıtlı olarak engellenmiştir.
 
 **Veri kalitesi kuralları** (satır bazında, tek bir hatalı satır tüm içe aktarmayı
 başarısız kılmaz — satır atlanır veya ilgili alan boş bırakılır, bir uyarı eklenir):
 
 * Ad veya Soyad boşsa satır atlanır.
-* TC formatı geçersizse (11 haneli değil) TC'siz içe aktarılır.
+* TC formatı geçersizse (11 haneli değil) TC'siz içe aktarılır (her zaman **yeni** kayıt
+  oluşturur, TC olmadan eşleştirme/upsert yapılamaz).
 * Aynı TC dosya içinde birden fazla geçiyorsa ikinci ve sonraki satırlar atlanır.
-* TC veritabanında zaten kayıtlıysa yeni kişi oluşturulmaz (mevcut kayıt yine de
-  anne/baba referansı olarak kullanılabilir) — bu, "upsert" değil "var olanı çakıştırma"
-  davranışıdır; CSV import her zaman **yeni** kayıt oluşturur, mevcut kişileri güncellemez.
+* TC veritabanında zaten aktif bir kişiye aitse yukarıdaki upsert kuralı uygulanır; TC
+  soft-silinmiş bir kişiye aitse güncelleme yapılmadan atlanır.
 * Doğum/ölüm tarihi gelecekte olamaz, ölüm doğumdan önce olamaz, çözümlenemeyen tarihler
   boş bırakılır (GEDCOM içe aktarmadaki "yanlış kesinlik oluşturma" prensibiyle aynı).
 * Kişi kendi annesi/babası olarak referans verilemez.
 * Tek seferde en fazla 5000 satır (dosya boyutu limiti: 5 MB, yalnızca `.csv` uzantısı).
 
 Tüm işlem tek bir DB transaction'ı içindedir; beklenmeyen bir hata oluşursa hiçbir kayıt
-eklenmez. On adet uç durumla (mükerrer TC, eksik alan, geçersiz tarih/cinsiyet, kendine
-referans, var olan kişiye çapraz referans vb.) gerçek tarayıcıda ve curl ile test edilmiş,
-her biri beklenen davranışı (satır eklendi / atlandı / alan boş bırakıldı) doğru şekilde
-üretmiştir.
+eklenmez/güncellenmez. On adet uç durumla (mükerrer TC, eksik alan, geçersiz tarih/cinsiyet,
+kendine referans, var olan kişiye çapraz referans vb.) gerçek tarayıcıda ve curl ile test
+edilmiş, her biri beklenen davranışı (satır eklendi / atlandı / alan boş bırakıldı) doğru
+şekilde üretmiştir. Upsert davranışı da izole test verisiyle uçtan uca doğrulanmıştır: bir
+kişinin TC'si ile hem dolu hem boş alanlar içeren bir satır yeniden yüklendiğinde, dolu
+alanlar (ör. `DogumYeri`) güncellenmiş, boş bırakılanlar (ör. `Cinsiyet`, `DogumTarihi`)
+korunmuş, `AnneTC` ile ilişki kurulmuş; soft-silinmiş bir TC ile denendiğinde ise güncelleme
+reddedilip doğru uyarı üretildiği doğrulanmıştır.
 
 ---
 
