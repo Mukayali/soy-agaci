@@ -137,14 +137,56 @@ else
 
     @if (Model.TotalPages > 1)
     {
+        // Sayfa sayısı büyük ailelerde çok yüksek olabildiğinden (ör. 30+ sayfa) tüm sayfa
+        // numaralarını basmak yerine mevcut sayfanın etrafında bir pencere + ilk/son sayfa +
+        // "..." gösterilir; Önceki/Sonraki de eklenmiştir.
+        const int window = 2;
+        var pageNumbers = new List<int?> { 1 };
+        for (var i = Model.Page - window; i <= Model.Page + window; i++)
+        {
+            if (i > 1 && i < Model.TotalPages)
+            {
+                pageNumbers.Add(i);
+            }
+        }
+        if (Model.TotalPages > 1)
+        {
+            pageNumbers.Add(Model.TotalPages);
+        }
+
+        var pages = new List<int?>();
+        int? previous = null;
+        foreach (var p in pageNumbers)
+        {
+            if (previous.HasValue && p.HasValue && p.Value - previous.Value > 1)
+            {
+                pages.Add(null);
+            }
+            pages.Add(p);
+            previous = p;
+        }
+
         <nav>
-            <ul class="pagination">
-                @for (var i = 1; i <= Model.TotalPages; i++)
+            <ul class="pagination flex-wrap">
+                <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-q="@Model.Query" asp-route-sulaleId="@Model.SulaleId" asp-route-page="@(Model.Page - 1)">‹ Önceki</a>
+                </li>
+                @foreach (var p in pages)
                 {
-                    <li class="page-item @(i == Model.Page ? "active" : "")">
-                        <a class="page-link" asp-action="Index" asp-route-q="@Model.Query" asp-route-sulaleId="@Model.SulaleId" asp-route-page="@i">@i</a>
-                    </li>
+                    if (p == null)
+                    {
+                        <li class="page-item disabled"><span class="page-link">…</span></li>
+                    }
+                    else
+                    {
+                        <li class="page-item @(p == Model.Page ? "active" : "")">
+                            <a class="page-link" asp-action="Index" asp-route-q="@Model.Query" asp-route-sulaleId="@Model.SulaleId" asp-route-page="@p">@p</a>
+                        </li>
+                    }
                 }
+                <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                    <a class="page-link" asp-action="Index" asp-route-q="@Model.Query" asp-route-sulaleId="@Model.SulaleId" asp-route-page="@(Model.Page + 1)">Sonraki ›</a>
+                </li>
             </ul>
         </nav>
     }
