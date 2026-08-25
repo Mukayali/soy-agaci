@@ -140,6 +140,7 @@ public class PersonService : IPersonService
             Ad = person.Ad,
             Soyad = person.Soyad,
             TcKimlikNoMasked = MaskTc(person.TcKimlikNo),
+            TcKimlikNo = person.TcKimlikNo,
             DogumTarihi = person.DogumTarihi,
             OlumTarihi = person.OlumTarihi,
             Aciklama = person.Aciklama,

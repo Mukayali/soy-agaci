@@ -149,6 +149,9 @@ public class PersonDetailViewModel
     public string Soyad { get; set; } = string.Empty;
     public string AdSoyad => $"{Ad} {Soyad}";
     public string? TcKimlikNoMasked { get; set; }
+
+    /// <summary>Maskelenmemiş TC Kimlik No. View katmanında yalnızca Admin rolüne gösterilmelidir.</summary>
+    public string? TcKimlikNo { get; set; }
     public DateTime? DogumTarihi { get; set; }
     public DateTime? OlumTarihi { get; set; }
     public bool Hayatta => OlumTarihi == null;

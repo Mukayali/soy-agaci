@@ -14,7 +14,11 @@
                 <span class="badge bg-secondary ms-2">Vefat Etti</span>
             }
         </p>
-        @if (Model.TcKimlikNoMasked != null)
+        @if (User.IsInRole("Admin") && !string.IsNullOrWhiteSpace(Model.TcKimlikNo))
+        {
+            <p class="text-muted mb-0">TC Kimlik No: @Model.TcKimlikNo</p>
+        }
+        else if (Model.TcKimlikNoMasked != null)
         {
             <p class="text-muted mb-0">TC Kimlik No: @Model.TcKimlikNoMasked</p>
         }
