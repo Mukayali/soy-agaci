@@ -88,6 +88,10 @@ else
         <thead>
             <tr>
                 <th>Ad Soyad</th>
+                @if (User.IsInRole("Admin"))
+                {
+                    <th>TC Kimlik No</th>
+                }
                 <th>Doğum</th>
                 <th>Ölüm</th>
                 <th>Anne</th>
@@ -101,6 +105,10 @@ else
             {
                 <tr>
                     <td>@p.AdSoyad</td>
+                    @if (User.IsInRole("Admin"))
+                    {
+                        <td>@(p.TcKimlikNo ?? "-")</td>
+                    }
                     <td>@(p.DogumTarihi?.ToString("dd.MM.yyyy") ?? "-")</td>
                     <td>@(p.OlumTarihi?.ToString("dd.MM.yyyy") ?? "-")</td>
                     <td>@(p.AnneAdSoyad ?? "-")</td>

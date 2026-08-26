@@ -14,6 +14,9 @@ public class PersonListItemViewModel
 {
     public int Id { get; set; }
     public string AdSoyad { get; set; } = string.Empty;
+
+    /// <summary>Maskelenmemiş TC Kimlik No. View katmanında yalnızca Admin rolüne gösterilmelidir.</summary>
+    public string? TcKimlikNo { get; set; }
     public DateTime? DogumTarihi { get; set; }
     public DateTime? OlumTarihi { get; set; }
     public string? AnneAdSoyad { get; set; }

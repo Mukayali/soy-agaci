@@ -614,6 +614,7 @@ public class PersonService : IPersonService
     {
         Id = p.Id,
         AdSoyad = $"{p.Ad} {p.Soyad}",
+        TcKimlikNo = p.TcKimlikNo,
         DogumTarihi = p.DogumTarihi,
         OlumTarihi = p.OlumTarihi,
         AnneAdSoyad = p.Anne == null ? null : $"{p.Anne.Ad} {p.Anne.Soyad}",
