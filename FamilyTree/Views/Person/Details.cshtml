@@ -62,9 +62,23 @@
         @foreach (var photo in Model.Photos)
         {
             <div class="col">
-                <img src="@photo.FilePath" class="img-fluid rounded @(photo.IsPrimary ? "border border-3 border-success" : "")" style="height:150px;object-fit:cover;width:100%;" alt="@Model.AdSoyad fotoğrafı" />
+                <img src="@photo.FilePath" class="img-fluid rounded photo-thumb @(photo.IsPrimary ? "border border-3 border-success" : "")" style="height:150px;object-fit:cover;width:100%;cursor:zoom-in;" alt="@Model.AdSoyad fotoğrafı" data-full-src="@photo.FilePath" data-caption="@Model.AdSoyad" />
             </div>
         }
+    </div>
+
+    <div class="modal fade" id="photoModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content bg-dark">
+                <div class="modal-header border-0 py-2">
+                    <h6 class="modal-title text-white" id="photoModalCaption"></h6>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                </div>
+                <div class="modal-body text-center p-0 pb-3">
+                    <img id="photoModalImg" src="" class="img-fluid" style="max-height:80vh;" alt="Büyütülmüş fotoğraf" />
+                </div>
+            </div>
+        </div>
     </div>
 }
 
@@ -288,6 +302,24 @@
 
 @section Scripts {
     <script>
+        (function () {
+            var photoModalEl = document.getElementById('photoModal');
+            if (!photoModalEl) {
+                return;
+            }
+            var photoModal = new bootstrap.Modal(photoModalEl);
+            var modalImg = document.getElementById('photoModalImg');
+            var modalCaption = document.getElementById('photoModalCaption');
+
+            document.querySelectorAll('.photo-thumb').forEach(function (thumb) {
+                thumb.addEventListener('click', function () {
+                    modalImg.src = thumb.dataset.fullSrc;
+                    modalCaption.textContent = thumb.dataset.caption || '';
+                    photoModal.show();
+                });
+            });
+        })();
+
         (function () {
             const input = document.getElementById('spouseSearch');
             const results = document.getElementById('spouseResults');
