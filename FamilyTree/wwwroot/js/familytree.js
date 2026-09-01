@@ -765,7 +765,7 @@
                         var el = document.createElement('button');
                         el.type = 'button';
                         el.className = 'list-group-item list-group-item-action';
-                        el.textContent = item.adSoyad + (item.dogumYili ? ' (' + item.dogumYili + ')' : '');
+                        el.textContent = item.adSoyad + (item.dogumYili ? ' (' + item.dogumYili + ')' : '') + (item.tcKimlikNoMasked ? ' — TC: ' + item.tcKimlikNoMasked : '');
                         el.addEventListener('click', function () {
                             searchInput.value = '';
                             searchResults.innerHTML = '';

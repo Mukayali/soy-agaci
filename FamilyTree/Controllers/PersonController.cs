@@ -190,6 +190,47 @@ public class PersonController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Roles = "Admin,Editor")]
+    public async Task<IActionResult> UploadPhoto(int personId, List<IFormFile>? photos)
+    {
+        if (photos == null || photos.Count == 0 || photos.All(f => f.Length == 0))
+        {
+            TempData["ErrorMessage"] = "Lütfen en az bir fotoğraf seçin.";
+            return RedirectToAction(nameof(Details), new { id = personId });
+        }
+
+        var uploaded = 0;
+        var errors = new List<string>();
+
+        foreach (var file in photos.Where(f => f.Length > 0))
+        {
+            var result = await _photoService.SavePhotoAsync(personId, file, isPrimary: false);
+            if (result.Success)
+            {
+                uploaded++;
+            }
+            else
+            {
+                errors.Add($"{file.FileName}: {result.ErrorMessage}");
+            }
+        }
+
+        if (uploaded > 0)
+        {
+            await _auditLogService.LogAsync($"{uploaded} fotoğraf eklendi", "Person", personId);
+            TempData["SuccessMessage"] = $"{uploaded} fotoğraf eklendi.";
+        }
+
+        if (errors.Count > 0)
+        {
+            TempData["ErrorMessage"] = string.Join(" | ", errors);
+        }
+
+        return RedirectToAction(nameof(Details), new { id = personId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin,Editor")]
     public async Task<IActionResult> DeletePhoto(int photoId, int personId)
     {
         await _photoService.DeletePhotoAsync(photoId);

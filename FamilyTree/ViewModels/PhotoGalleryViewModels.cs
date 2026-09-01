@@ -5,6 +5,10 @@ public class PhotoGalleryViewModel
     public List<PersonPhotoGroupViewModel> Groups { get; set; } = new();
     public List<PersonPhotoViewModel> UnassignedPhotos { get; set; } = new();
     public int TotalPhotoCount { get; set; }
+
+    public int Page { get; set; } = 1;
+    public int PageSize { get; set; } = 24;
+    public int TotalPages => (int)Math.Ceiling(TotalPhotoCount / (double)PageSize);
 }
 
 public class PersonPhotoGroupViewModel

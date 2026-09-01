@@ -63,6 +63,10 @@
         {
             <div class="col">
                 <img src="@photo.FilePath" class="img-fluid rounded photo-thumb @(photo.IsPrimary ? "border border-3 border-success" : "")" style="height:150px;object-fit:cover;width:100%;cursor:zoom-in;" alt="@Model.AdSoyad fotoğrafı" data-full-src="@photo.FilePath" data-caption="@Model.AdSoyad" />
+                @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+                {
+                    <a href="/Photos?photoId=@photo.Id" class="d-block text-center small mt-1">Düzenle</a>
+                }
             </div>
         }
     </div>
@@ -80,6 +84,15 @@
             </div>
         </div>
     </div>
+}
+
+@if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+{
+    <form asp-action="UploadPhoto" method="post" enctype="multipart/form-data" class="d-flex gap-2 mb-4">
+        <input type="hidden" name="personId" value="@Model.Id" />
+        <input type="file" name="photos" class="form-control" multiple accept=".jpg,.jpeg,.png,.webp" required />
+        <button type="submit" class="btn btn-outline-primary text-nowrap">Fotoğraf Ekle</button>
+    </form>
 }
 
 @if (!string.IsNullOrWhiteSpace(Model.Aciklama))
@@ -149,7 +162,17 @@
                     <ul class="list-unstyled">
                         @foreach (var e in Model.Esler)
                         {
-                            <li><a asp-action="Details" asp-route-id="@e.Id">@e.AdSoyad</a></li>
+                            <li class="d-flex align-items-center justify-content-between mb-1">
+                                <a asp-action="Details" asp-route-id="@e.Id">@e.AdSoyad</a>
+                                @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+                                {
+                                    <form asp-action="RemoveSpouse" method="post" class="ms-2" onsubmit="return confirm('Bu eş ilişkisini silmek istediğinizden emin misiniz?');">
+                                        <input type="hidden" name="spouseRelationshipId" value="@e.SpouseRelationshipId" />
+                                        <input type="hidden" name="personId" value="@Model.Id" />
+                                        <button type="submit" class="btn btn-sm btn-outline-danger">Sil</button>
+                                    </form>
+                                }
+                            </li>
                         }
                     </ul>
                 }
@@ -161,7 +184,7 @@
                 {
                     <form asp-action="AddSpouse" method="post" class="d-flex gap-2 position-relative">
                         <input type="hidden" name="personId" value="@Model.Id" />
-                        <input type="text" id="spouseSearch" class="form-control" placeholder="Eş ara..." autocomplete="off" />
+                        <input type="text" id="spouseSearch" class="form-control" placeholder="Eş ara... (ad, soyad veya TC)" autocomplete="off" />
                         <input type="hidden" name="spouseId" id="spouseId" />
                         <button type="submit" class="btn btn-outline-primary">Ekle</button>
                         <div id="spouseResults" class="list-group position-absolute w-100" style="top:100%;z-index:1000;"></div>
@@ -346,7 +369,7 @@
                                 const el = document.createElement('button');
                                 el.type = 'button';
                                 el.className = 'list-group-item list-group-item-action';
-                                el.textContent = item.adSoyad + (item.dogumYili ? ' (' + item.dogumYili + ')' : '');
+                                el.textContent = item.adSoyad + (item.dogumYili ? ' (' + item.dogumYili + ')' : '') + (item.tcKimlikNoMasked ? ' — TC: ' + item.tcKimlikNoMasked : '');
                                 el.addEventListener('click', function () {
                                     input.value = item.adSoyad;
                                     hidden.value = item.id;

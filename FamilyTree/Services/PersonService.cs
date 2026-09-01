@@ -75,8 +75,14 @@ public class PersonService : IPersonService
                 .OrderBy(p => p.DogumTarihi)
                 .ToListAsync();
 
-        var spouses = person.SpouseRelationshipsAsPerson1.Select(sr => sr.Person2)
-            .Concat(person.SpouseRelationshipsAsPerson2.Select(sr => sr.Person1))
+        var esler = person.SpouseRelationshipsAsPerson1.Select(sr => (sr.Id, Es: sr.Person2))
+            .Concat(person.SpouseRelationshipsAsPerson2.Select(sr => (sr.Id, Es: sr.Person1)))
+            .Select(x =>
+            {
+                var item = ToListItem(x.Es);
+                item.SpouseRelationshipId = x.Id;
+                return item;
+            })
             .ToList();
 
         var buyukebeveynler = new List<PersonListItemViewModel>();
@@ -151,7 +157,7 @@ public class PersonService : IPersonService
                 .ToList(),
             Anne = person.Anne == null ? null : ToListItem(person.Anne),
             Baba = person.Baba == null ? null : ToListItem(person.Baba),
-            Esler = spouses.Select(p => ToListItem(p)).ToList(),
+            Esler = esler,
             Cocuklar = children.Select(p => ToListItem(p)).ToList(),
             Kardesler = siblings.Select(p => ToListItem(p)).ToList(),
             Torunlar = grandchildren.Select(p => ToListItem(p)).ToList(),
@@ -284,24 +290,25 @@ public class PersonService : IPersonService
 
         var trimmed = query.Trim();
 
-        var results = await _context.Persons
+        var persons = await _context.Persons
             .AsNoTracking()
             .Where(p => (excludePersonId == null || p.Id != excludePersonId) &&
                 (EF.Functions.Like(p.Ad, $"%{trimmed}%") ||
                  EF.Functions.Like(p.Soyad, $"%{trimmed}%") ||
-                 EF.Functions.Like((p.Ad + " " + p.Soyad), $"%{trimmed}%")))
+                 EF.Functions.Like((p.Ad + " " + p.Soyad), $"%{trimmed}%") ||
+                 (p.TcKimlikNo != null && p.TcKimlikNo == trimmed)))
             .OrderBy(p => p.Ad).ThenBy(p => p.Soyad)
             .Take(limit)
-            .Select(p => new PersonSearchResultItem
-            {
-                Id = p.Id,
-                AdSoyad = p.Ad + " " + p.Soyad,
-                DogumYili = p.DogumTarihi.HasValue ? p.DogumTarihi.Value.Year.ToString() : null,
-                OlumYili = p.OlumTarihi.HasValue ? p.OlumTarihi.Value.Year.ToString() : null,
-            })
             .ToListAsync();
 
-        return results;
+        return persons.Select(p => new PersonSearchResultItem
+        {
+            Id = p.Id,
+            AdSoyad = p.Ad + " " + p.Soyad,
+            DogumYili = p.DogumTarihi.HasValue ? p.DogumTarihi.Value.Year.ToString() : null,
+            OlumYili = p.OlumTarihi.HasValue ? p.OlumTarihi.Value.Year.ToString() : null,
+            TcKimlikNoMasked = MaskTc(p.TcKimlikNo),
+        }).ToList();
     }
 
     public async Task<(bool Success, int? Id, string? ErrorMessage)> CreateAsync(PersonCreateViewModel model)

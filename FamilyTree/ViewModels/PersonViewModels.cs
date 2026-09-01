@@ -26,6 +26,9 @@ public class PersonListItemViewModel
 
     /// <summary>Bu kişinin merkez kişiye göre akrabalık etiketi (ör. "Dede (Anne tarafı)"). Sadece bazı listelerde kullanılır.</summary>
     public string? Rol { get; set; }
+
+    /// <summary>Eş ilişkisinin Id'si. Yalnızca Esler listesinde doldurulur, ilişkiyi silmek için kullanılır.</summary>
+    public int? SpouseRelationshipId { get; set; }
 }
 
 public class PersonIndexViewModel
@@ -46,6 +49,9 @@ public class PersonSearchResultItem
     public string AdSoyad { get; set; } = string.Empty;
     public string? DogumYili { get; set; }
     public string? OlumYili { get; set; }
+
+    /// <summary>Maskelenmiş TC Kimlik No (ör. "123*****89"), aynı isimli kişileri ayırt etmek için. Tam TC asla döndürülmez.</summary>
+    public string? TcKimlikNoMasked { get; set; }
 }
 
 public class PersonCreateViewModel : IValidatableObject

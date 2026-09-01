@@ -3,8 +3,18 @@
     ViewData["Title"] = "Fotoğraflar";
 }
 
-<div class="d-flex justify-content-between align-items-center mb-3">
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
     <h2>Fotoğraflar <span class="text-muted fs-6">(@Model.TotalPhotoCount fotoğraf)</span></h2>
+    <form method="get" class="d-flex align-items-center gap-2">
+        <input type="hidden" name="page" value="1" />
+        <label for="pageSizeSelect" class="col-form-label col-form-label-sm text-muted mb-0">Sayfa başına:</label>
+        <select id="pageSizeSelect" name="pageSize" class="form-select form-select-sm w-auto" onchange="this.form.submit()">
+            <option value="12" selected="@(Model.PageSize == 12)">12</option>
+            <option value="24" selected="@(Model.PageSize == 24)">24</option>
+            <option value="48" selected="@(Model.PageSize == 48)">48</option>
+            <option value="96" selected="@(Model.PageSize == 96)">96</option>
+        </select>
+    </form>
 </div>
 
 @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
@@ -18,6 +28,8 @@
                 atanabilir.
             </p>
             <form asp-action="Upload" method="post" enctype="multipart/form-data" class="d-flex gap-2">
+                <input type="hidden" name="page" value="@Model.Page" />
+                <input type="hidden" name="pageSize" value="@Model.PageSize" />
                 <input type="file" name="photos" class="form-control" multiple accept=".jpg,.jpeg,.png,.webp" required />
                 <button type="submit" class="btn btn-primary text-nowrap">Yükle</button>
             </form>
@@ -51,18 +63,33 @@
                 {
                     <div class="col">
                         <div class="card h-100">
-                            <img src="@photo.FilePath" class="card-img-top photo-thumb" style="height:140px;object-fit:cover;cursor:zoom-in;" alt="@group.PersonName fotoğrafı" data-full-src="@photo.FilePath" data-caption="@group.PersonName" />
+                            <img src="@photo.FilePath" class="card-img-top photo-thumb" style="height:140px;object-fit:cover;cursor:zoom-in;" alt="@group.PersonName fotoğrafı" data-photo-id="@photo.Id" data-full-src="@photo.FilePath" data-caption="@group.PersonName" />
                             <div class="card-body p-2 text-center">
                                 @if (photo.IsPrimary)
                                 {
                                     <span class="badge bg-success">Ana Fotoğraf</span>
                                 }
+                                else if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+                                {
+                                    <form asp-action="SetPrimary" method="post">
+                                        <input type="hidden" name="photoId" value="@photo.Id" />
+                                        <input type="hidden" name="personId" value="@group.PersonId" />
+                                        <input type="hidden" name="page" value="@Model.Page" />
+                                        <input type="hidden" name="pageSize" value="@Model.PageSize" />
+                                        <button type="submit" class="btn btn-sm btn-outline-success w-100">Ana Yap</button>
+                                    </form>
+                                }
                                 @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
                                 {
-                                    <form asp-action="Delete" method="post" class="mt-1" onsubmit="return confirm('Bu fotoğrafı silmek istediğinizden emin misiniz?');">
-                                        <input type="hidden" name="photoId" value="@photo.Id" />
-                                        <button type="submit" class="btn btn-sm btn-outline-danger">Sil</button>
-                                    </form>
+                                    <div class="d-flex gap-1 mt-1">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary flex-fill photo-edit-btn" data-photo-id="@photo.Id" data-photo-src="@photo.FilePath">Düzenle</button>
+                                        <form asp-action="Delete" method="post" class="flex-fill" onsubmit="return confirm('Bu fotoğrafı silmek istediğinizden emin misiniz?');">
+                                            <input type="hidden" name="photoId" value="@photo.Id" />
+                                            <input type="hidden" name="page" value="@Model.Page" />
+                                            <input type="hidden" name="pageSize" value="@Model.PageSize" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger w-100">Sil</button>
+                                        </form>
+                                    </div>
                                 }
                             </div>
                         </div>
@@ -84,21 +111,28 @@
                 {
                     <div class="col">
                         <div class="card h-100">
-                            <img src="@photo.FilePath" class="card-img-top photo-thumb" style="height:140px;object-fit:cover;cursor:zoom-in;" alt="İlişkilendirilmemiş fotoğraf" data-full-src="@photo.FilePath" data-caption="İlişkilendirilmemiş fotoğraf" />
+                            <img src="@photo.FilePath" class="card-img-top photo-thumb" style="height:140px;object-fit:cover;cursor:zoom-in;" alt="İlişkilendirilmemiş fotoğraf" data-photo-id="@photo.Id" data-full-src="@photo.FilePath" data-caption="İlişkilendirilmemiş fotoğraf" />
                             <div class="card-body p-2">
                                 @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
                                 {
                                     <form asp-action="Assign" method="post" class="position-relative mb-2">
                                         <input type="hidden" name="photoId" value="@photo.Id" />
+                                        <input type="hidden" name="page" value="@Model.Page" />
+                                        <input type="hidden" name="pageSize" value="@Model.PageSize" />
                                         <input type="text" id="personSearch-@photo.Id" class="form-control form-control-sm mb-1" placeholder="Kişi ara..." autocomplete="off" />
                                         <input type="hidden" name="personId" id="personId-@photo.Id" />
                                         <div id="personResults-@photo.Id" class="list-group position-absolute w-100" style="z-index:1000;"></div>
                                         <button type="submit" class="btn btn-sm btn-outline-primary w-100">Kişiye Ata</button>
                                     </form>
-                                    <form asp-action="Delete" method="post" onsubmit="return confirm('Bu fotoğrafı silmek istediğinizden emin misiniz?');">
-                                        <input type="hidden" name="photoId" value="@photo.Id" />
-                                        <button type="submit" class="btn btn-sm btn-outline-danger w-100">Sil</button>
-                                    </form>
+                                    <div class="d-flex gap-1">
+                                        <button type="button" class="btn btn-sm btn-outline-secondary flex-fill photo-edit-btn" data-photo-id="@photo.Id" data-photo-src="@photo.FilePath">Düzenle</button>
+                                        <form asp-action="Delete" method="post" class="flex-fill" onsubmit="return confirm('Bu fotoğrafı silmek istediğinizden emin misiniz?');">
+                                            <input type="hidden" name="photoId" value="@photo.Id" />
+                                            <input type="hidden" name="page" value="@Model.Page" />
+                                            <input type="hidden" name="pageSize" value="@Model.PageSize" />
+                                            <button type="submit" class="btn btn-sm btn-outline-danger w-100">Sil</button>
+                                        </form>
+                                    </div>
                                 }
                             </div>
                         </div>
@@ -107,6 +141,60 @@
             </div>
         </div>
     </div>
+}
+
+@if (Model.TotalPages > 1)
+{
+    // Person/Index'teki aynı pencere + ilk/son sayfa + "..." deseni.
+    const int window = 2;
+    var pageNumbers = new List<int?> { 1 };
+    for (var i = Model.Page - window; i <= Model.Page + window; i++)
+    {
+        if (i > 1 && i < Model.TotalPages)
+        {
+            pageNumbers.Add(i);
+        }
+    }
+    if (Model.TotalPages > 1)
+    {
+        pageNumbers.Add(Model.TotalPages);
+    }
+
+    var pages = new List<int?>();
+    int? previous = null;
+    foreach (var p in pageNumbers)
+    {
+        if (previous.HasValue && p.HasValue && p.Value - previous.Value > 1)
+        {
+            pages.Add(null);
+        }
+        pages.Add(p);
+        previous = p;
+    }
+
+    <nav>
+        <ul class="pagination flex-wrap">
+            <li class="page-item @(Model.Page <= 1 ? "disabled" : "")">
+                <a class="page-link" asp-action="Index" asp-route-pageSize="@Model.PageSize" asp-route-page="@(Model.Page - 1)">‹ Önceki</a>
+            </li>
+            @foreach (var p in pages)
+            {
+                if (p == null)
+                {
+                    <li class="page-item disabled"><span class="page-link">…</span></li>
+                }
+                else
+                {
+                    <li class="page-item @(p == Model.Page ? "active" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-pageSize="@Model.PageSize" asp-route-page="@p">@p</a>
+                    </li>
+                }
+            }
+            <li class="page-item @(Model.Page >= Model.TotalPages ? "disabled" : "")">
+                <a class="page-link" asp-action="Index" asp-route-pageSize="@Model.PageSize" asp-route-page="@(Model.Page + 1)">Sonraki ›</a>
+            </li>
+        </ul>
+    </nav>
 }
 
 <div class="modal fade" id="photoModal" tabindex="-1" aria-hidden="true">
@@ -122,6 +210,38 @@
         </div>
     </div>
 </div>
+
+@if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+{
+    <div class="modal fade" id="editPhotoModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Fotoğrafı Düzenle</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                </div>
+                <div class="modal-body text-center">
+                    <div class="btn-toolbar justify-content-center gap-2 mb-3">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="editRotateLeft">↺ Sola Döndür</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="editRotateRight">↻ Sağa Döndür</button>
+                        <button type="button" class="btn btn-sm btn-outline-primary" id="editApplyCrop">Kırp</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="editUndo" disabled>↶ Geri Al</button>
+                        <button type="button" class="btn btn-sm btn-outline-warning" id="editReset">Sıfırla</button>
+                    </div>
+                    <p class="text-muted small mb-2">Kırpmak için fotoğraf üzerinde bir alanı sürükleyerek seçin, sonra "Kırp" butonuna basın.</p>
+                    <div class="d-flex justify-content-center bg-dark-subtle rounded p-2">
+                        <canvas id="editCanvas" style="max-width:100%;max-height:60vh;touch-action:none;cursor:crosshair;"></canvas>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <span id="editErrorMsg" class="text-danger small me-auto"></span>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                    <button type="button" class="btn btn-primary" id="editSaveBtn">Kaydet</button>
+                </div>
+            </div>
+        </div>
+    </div>
+}
 
 @section Scripts {
     <script>
@@ -164,7 +284,7 @@
                                 const el = document.createElement('button');
                                 el.type = 'button';
                                 el.className = 'list-group-item list-group-item-action';
-                                el.textContent = item.adSoyad + (item.dogumYili ? ' (' + item.dogumYili + ')' : '');
+                                el.textContent = item.adSoyad + (item.dogumYili ? ' (' + item.dogumYili + ')' : '') + (item.tcKimlikNoMasked ? ' — TC: ' + item.tcKimlikNoMasked : '');
                                 el.addEventListener('click', function () {
                                     input.value = item.adSoyad;
                                     hidden.value = item.id;
@@ -191,6 +311,224 @@
         @foreach (var photo in Model.UnassignedPhotos)
         {
             @:setupPersonSearch('personSearch-@photo.Id', 'personResults-@photo.Id', 'personId-@photo.Id');
+        }
+
+        @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+        {
+            @:(function () {
+            @:    var editModalEl = document.getElementById('editPhotoModal');
+            @:    var editModal = new bootstrap.Modal(editModalEl);
+            @:    var canvas = document.getElementById('editCanvas');
+            @:    var ctx = canvas.getContext('2d');
+            @:    var errorMsg = document.getElementById('editErrorMsg');
+            @:    var undoBtn = document.getElementById('editUndo');
+            @:
+            @:    var working = document.createElement('canvas');
+            @:    var history = [];
+            @:    var currentPhotoId = null;
+            @:    var originalSrc = null;
+            @:    var selection = null;
+            @:    var dragging = false;
+            @:    var dragStart = null;
+            @:
+            @:    function loadImageToWorking(src) {
+            @:        return new Promise(function (resolve, reject) {
+            @:            var img = new Image();
+            @:            img.onload = function () {
+            @:                working.width = img.naturalWidth;
+            @:                working.height = img.naturalHeight;
+            @:                var wctx = working.getContext('2d');
+            @:                wctx.clearRect(0, 0, working.width, working.height);
+            @:                wctx.drawImage(img, 0, 0);
+            @:                resolve();
+            @:            };
+            @:            img.onerror = reject;
+            @:            img.src = src;
+            @:        });
+            @:    }
+            @:
+            @:    function redraw() {
+            @:        canvas.width = working.width;
+            @:        canvas.height = working.height;
+            @:        ctx.clearRect(0, 0, canvas.width, canvas.height);
+            @:        ctx.drawImage(working, 0, 0);
+            @:        if (selection) {
+            @:            ctx.save();
+            @:            ctx.strokeStyle = '#0d6efd';
+            @:            ctx.lineWidth = Math.max(2, canvas.width / 400);
+            @:            ctx.setLineDash([8, 6]);
+            @:            ctx.strokeRect(selection.x, selection.y, selection.w, selection.h);
+            @:            ctx.fillStyle = 'rgba(13,110,253,0.15)';
+            @:            ctx.fillRect(selection.x, selection.y, selection.w, selection.h);
+            @:            ctx.restore();
+            @:        }
+            @:    }
+            @:
+            @:    function canvasPointFromEvent(e) {
+            @:        var rect = canvas.getBoundingClientRect();
+            @:        var scaleX = canvas.width / rect.width;
+            @:        var scaleY = canvas.height / rect.height;
+            @:        var clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            @:        var clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            @:        return {
+            @:            x: Math.min(Math.max((clientX - rect.left) * scaleX, 0), canvas.width),
+            @:            y: Math.min(Math.max((clientY - rect.top) * scaleY, 0), canvas.height),
+            @:        };
+            @:    }
+            @:
+            @:    function startDrag(e) {
+            @:        e.preventDefault();
+            @:        dragging = true;
+            @:        dragStart = canvasPointFromEvent(e);
+            @:        selection = { x: dragStart.x, y: dragStart.y, w: 0, h: 0 };
+            @:    }
+            @:
+            @:    function onDrag(e) {
+            @:        if (!dragging) return;
+            @:        var p = canvasPointFromEvent(e);
+            @:        selection = {
+            @:            x: Math.min(dragStart.x, p.x),
+            @:            y: Math.min(dragStart.y, p.y),
+            @:            w: Math.abs(p.x - dragStart.x),
+            @:            h: Math.abs(p.y - dragStart.y),
+            @:        };
+            @:        redraw();
+            @:    }
+            @:
+            @:    function endDrag() {
+            @:        dragging = false;
+            @:    }
+            @:
+            @:    canvas.addEventListener('mousedown', startDrag);
+            @:    canvas.addEventListener('touchstart', startDrag);
+            @:    document.addEventListener('mousemove', onDrag);
+            @:    document.addEventListener('touchmove', onDrag);
+            @:    document.addEventListener('mouseup', endDrag);
+            @:    document.addEventListener('touchend', endDrag);
+            @:
+            @:    function pushHistory() {
+            @:        history.push(working);
+            @:        undoBtn.disabled = false;
+            @:    }
+            @:
+            @:    function rotate(deg) {
+            @:        selection = null;
+            @:        pushHistory();
+            @:        var rotated = document.createElement('canvas');
+            @:        rotated.width = working.height;
+            @:        rotated.height = working.width;
+            @:        var rctx = rotated.getContext('2d');
+            @:        rctx.translate(rotated.width / 2, rotated.height / 2);
+            @:        rctx.rotate(deg * Math.PI / 180);
+            @:        rctx.drawImage(working, -working.width / 2, -working.height / 2);
+            @:        working = rotated;
+            @:        redraw();
+            @:    }
+            @:
+            @:    document.getElementById('editRotateLeft').addEventListener('click', function () { rotate(-90); });
+            @:    document.getElementById('editRotateRight').addEventListener('click', function () { rotate(90); });
+            @:
+            @:    document.getElementById('editApplyCrop').addEventListener('click', function () {
+            @:        if (!selection || selection.w < 5 || selection.h < 5) {
+            @:            errorMsg.textContent = 'Önce kırpılacak alanı fotoğraf üzerinde sürükleyerek seçin.';
+            @:            return;
+            @:        }
+            @:        errorMsg.textContent = '';
+            @:        pushHistory();
+            @:        var cropped = document.createElement('canvas');
+            @:        cropped.width = Math.round(selection.w);
+            @:        cropped.height = Math.round(selection.h);
+            @:        var cctx = cropped.getContext('2d');
+            @:        cctx.drawImage(working, selection.x, selection.y, selection.w, selection.h, 0, 0, cropped.width, cropped.height);
+            @:        working = cropped;
+            @:        selection = null;
+            @:        redraw();
+            @:    });
+            @:
+            @:    undoBtn.addEventListener('click', function () {
+            @:        if (history.length === 0) return;
+            @:        errorMsg.textContent = '';
+            @:        selection = null;
+            @:        working = history.pop();
+            @:        undoBtn.disabled = history.length === 0;
+            @:        redraw();
+            @:    });
+            @:
+            @:    document.getElementById('editReset').addEventListener('click', function () {
+            @:        errorMsg.textContent = '';
+            @:        selection = null;
+            @:        history = [];
+            @:        undoBtn.disabled = true;
+            @:        loadImageToWorking(originalSrc).then(redraw);
+            @:    });
+            @:
+            @:    function openEditorFor(btn) {
+            @:        currentPhotoId = btn.dataset.photoId;
+            @:        originalSrc = btn.dataset.photoSrc;
+            @:        selection = null;
+            @:        history = [];
+            @:        undoBtn.disabled = true;
+            @:        errorMsg.textContent = '';
+            @:        loadImageToWorking(originalSrc).then(function () {
+            @:            redraw();
+            @:            editModal.show();
+            @:        }).catch(function () {
+            @:            alert('Fotoğraf yüklenemedi.');
+            @:        });
+            @:    }
+            @:
+            @:    document.querySelectorAll('.photo-edit-btn').forEach(function (btn) {
+            @:        btn.addEventListener('click', function () { openEditorFor(btn); });
+            @:    });
+            @:
+            @:    var requestedPhotoId = new URLSearchParams(window.location.search).get('photoId');
+            @:    if (requestedPhotoId) {
+            @:        var requestedBtn = document.querySelector('.photo-edit-btn[data-photo-id="' + requestedPhotoId + '"]');
+            @:        if (requestedBtn) {
+            @:            requestedBtn.scrollIntoView({ block: 'center' });
+            @:            openEditorFor(requestedBtn);
+            @:        }
+            @:    }
+            @:
+            @:    document.getElementById('editSaveBtn').addEventListener('click', function () {
+            @:        if (!currentPhotoId) return;
+            @:        errorMsg.textContent = '';
+            @:        working.toBlob(function (blob) {
+            @:            if (!blob) {
+            @:                errorMsg.textContent = 'Fotoğraf işlenemedi.';
+            @:                return;
+            @:            }
+            @:            var tokenInput = document.querySelector('input[name="__RequestVerificationToken"]');
+            @:            var formData = new FormData();
+            @:            formData.append('photoId', currentPhotoId);
+            @:            formData.append('file', blob, 'edited.jpg');
+            @:            if (tokenInput) {
+            @:                formData.append('__RequestVerificationToken', tokenInput.value);
+            @:            }
+            @:            fetch('/Photos/Edit', { method: 'POST', body: formData })
+            @:                .then(function (r) {
+            @:                    return r.json().then(function (data) { return { ok: r.ok, data: data }; });
+            @:                })
+            @:                .then(function (result) {
+            @:                    if (result.ok && result.data.success) {
+            @:                        document.querySelectorAll('img[data-photo-id="' + currentPhotoId + '"]').forEach(function (img) {
+            @:                            img.src = result.data.filePath;
+            @:                            img.dataset.fullSrc = result.data.filePath;
+            @:                        });
+            @:                        document.querySelectorAll('.photo-edit-btn[data-photo-id="' + currentPhotoId + '"]').forEach(function (b) {
+            @:                            b.dataset.photoSrc = result.data.filePath;
+            @:                        });
+            @:                        editModal.hide();
+            @:                    } else {
+            @:                        errorMsg.textContent = (result.data && result.data.error) || 'Fotoğraf kaydedilemedi.';
+            @:                    }
+            @:                })
+            @:                .catch(function () {
+            @:                    errorMsg.textContent = 'Fotoğraf kaydedilirken bir hata oluştu.';
+            @:                });
+            @:        }, 'image/jpeg', 0.92);
+            @:    });
+            @:})();
         }
     </script>
 }

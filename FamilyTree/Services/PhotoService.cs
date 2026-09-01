@@ -28,27 +28,13 @@ public class PhotoService : IPhotoService
 
     public async Task<PhotoUploadResult> SavePhotoAsync(int? personId, IFormFile file, bool isPrimary)
     {
-        if (file.Length == 0)
+        var validation = await ValidateUploadAsync(file);
+        if (!validation.Ok)
         {
-            return new PhotoUploadResult { Success = false, ErrorMessage = "Dosya boş olamaz." };
+            return new PhotoUploadResult { Success = false, ErrorMessage = validation.Error };
         }
 
-        if (file.Length > MaxFileSizeBytes)
-        {
-            return new PhotoUploadResult { Success = false, ErrorMessage = "Dosya boyutu 10 MB'ı aşamaz." };
-        }
-
-        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
-
-        if (!AllowedSignatures.ContainsKey(extension))
-        {
-            return new PhotoUploadResult { Success = false, ErrorMessage = "Sadece JPG, JPEG, PNG veya WEBP formatları desteklenir." };
-        }
-
-        if (!await HasValidSignatureAsync(file, extension))
-        {
-            return new PhotoUploadResult { Success = false, ErrorMessage = "Dosya içeriği beklenen resim formatıyla eşleşmiyor." };
-        }
+        var extension = validation.Extension!;
 
         if (personId.HasValue)
         {
@@ -96,6 +82,44 @@ public class PhotoService : IPhotoService
 
         _context.PersonPhotos.Add(photo);
         await _context.SaveChangesAsync();
+
+        return new PhotoUploadResult { Success = true, Photo = photo };
+    }
+
+    public async Task<PhotoUploadResult> ReplacePhotoFileAsync(int photoId, IFormFile file)
+    {
+        var photo = await _context.PersonPhotos.FindAsync(photoId);
+        if (photo == null)
+        {
+            return new PhotoUploadResult { Success = false, ErrorMessage = "Fotoğraf bulunamadı." };
+        }
+
+        var validation = await ValidateUploadAsync(file);
+        if (!validation.Ok)
+        {
+            return new PhotoUploadResult { Success = false, ErrorMessage = validation.Error };
+        }
+
+        var uploadsFolder = Path.Combine(_environment.WebRootPath, "uploads", "persons");
+        Directory.CreateDirectory(uploadsFolder);
+
+        var uniqueFileName = $"{Guid.NewGuid()}{validation.Extension}";
+        var fullPath = Path.Combine(uploadsFolder, uniqueFileName);
+
+        await using (var stream = new FileStream(fullPath, FileMode.Create))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        var oldPhysicalPath = Path.Combine(_environment.WebRootPath, photo.FilePath.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+
+        photo.FilePath = $"/uploads/persons/{uniqueFileName}";
+        await _context.SaveChangesAsync();
+
+        if (File.Exists(oldPhysicalPath))
+        {
+            File.Delete(oldPhysicalPath);
+        }
 
         return new PhotoUploadResult { Success = true, Photo = photo };
     }
@@ -172,6 +196,33 @@ public class PhotoService : IPhotoService
         }
 
         await _context.SaveChangesAsync();
+    }
+
+    private async Task<(bool Ok, string? Error, string? Extension)> ValidateUploadAsync(IFormFile file)
+    {
+        if (file.Length == 0)
+        {
+            return (false, "Dosya boş olamaz.", null);
+        }
+
+        if (file.Length > MaxFileSizeBytes)
+        {
+            return (false, "Dosya boyutu 10 MB'ı aşamaz.", null);
+        }
+
+        var extension = Path.GetExtension(file.FileName).ToLowerInvariant();
+
+        if (!AllowedSignatures.ContainsKey(extension))
+        {
+            return (false, "Sadece JPG, JPEG, PNG veya WEBP formatları desteklenir.", null);
+        }
+
+        if (!await HasValidSignatureAsync(file, extension))
+        {
+            return (false, "Dosya içeriği beklenen resim formatıyla eşleşmiyor.", null);
+        }
+
+        return (true, null, extension);
     }
 
     private static async Task<bool> HasValidSignatureAsync(IFormFile file, string extension)
