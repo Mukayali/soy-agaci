@@ -36,6 +36,14 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
             entity.HasIndex(p => p.AnneId);
             entity.HasIndex(p => p.BabaId);
 
+            // MySQL'in varsayılan utf8mb4_0900_ai_ci collation'ı Türkçe İ/i - I/ı büyük/küçük
+            // harf kurallarını bilmez (ör. "kadır" araması "KADIR" ile eşleşmez); arama bu
+            // alanlar üzerinde LIKE ile çalıştığından (bkz. PersonService.SearchAsync/
+            // QuickSearchAsync) doğru Türkçe eşleştirme için bu iki kolon utf8mb4_turkish_ci
+            // kullanmalı (bkz. CLAUDE.md Bölüm 22/25).
+            entity.Property(p => p.Ad).UseCollation("utf8mb4_turkish_ci");
+            entity.Property(p => p.Soyad).UseCollation("utf8mb4_turkish_ci");
+
             entity.Property(p => p.Cinsiyet)
                 .HasConversion<string>()
                 .HasMaxLength(10);
