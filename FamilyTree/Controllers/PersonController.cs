@@ -191,6 +191,33 @@ public class PersonController : Controller
         return RedirectToAction(nameof(Deleted));
     }
 
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> AutoLinkSpouses()
+    {
+        var suggestions = await _personService.GetParentSpouseSuggestionsAsync();
+        return View(suggestions);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin")]
+    public async Task<IActionResult> AutoLinkSpouses(bool confirm)
+    {
+        var created = await _personService.AutoLinkSpousesFromParentsAsync();
+
+        if (created > 0)
+        {
+            await _auditLogService.LogAsync($"Anne/baba bilgisinden {created} eş ilişkisi otomatik oluşturuldu", "Person", null);
+            TempData["SuccessMessage"] = $"{created} eş ilişkisi oluşturuldu.";
+        }
+        else
+        {
+            TempData["ErrorMessage"] = "Oluşturulacak yeni eş ilişkisi bulunamadı.";
+        }
+
+        return RedirectToAction(nameof(AutoLinkSpouses));
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Roles = "Admin,Editor")]

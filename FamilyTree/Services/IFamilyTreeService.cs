@@ -29,4 +29,10 @@ public interface IFamilyTreeService
     /// Sülale bulunamazsa null döner; üyesi yoksa boş bir graph döner.
     /// </summary>
     Task<FamilyTreeGraphDto?> GetBySulaleAsync(int sulaleId);
+
+    /// <summary>
+    /// İki kişi arasında kayıtlı anne/baba ve eş ilişkileri üzerinden en kısa bağı bulur.
+    /// Bağ yoksa <see cref="RelationshipResultDto.Related"/> false döner.
+    /// </summary>
+    Task<RelationshipResultDto> FindRelationshipAsync(int person1Id, int person2Id);
 }

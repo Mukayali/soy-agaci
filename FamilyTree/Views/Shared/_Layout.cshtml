@@ -56,6 +56,9 @@
                                         @if (User.IsInRole("Admin"))
                                         {
                                             <li>
+                                                <a class="dropdown-item" asp-area="" asp-controller="Person" asp-action="AutoLinkSpouses">Eşleri Anne/Baba'dan Doldur</a>
+                                            </li>
+                                            <li>
                                                 <a class="dropdown-item" asp-area="" asp-controller="Comments" asp-action="Index">Yorumlar</a>
                                             </li>
                                             <li>

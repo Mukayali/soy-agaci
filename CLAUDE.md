@@ -1875,6 +1875,90 @@ gerçek tarayıcıda görsel olarak doğrulanmıştır.
 
 ---
 
+# 51.4. Akrabalık Bağı Bulma (İki Kişi Arası Yol)
+
+**Durum: Uygulandı.** `/FamilyTree` sayfasındaki "Akrabalık Bağını Bul" paneli, iki kişi
+seçildiğinde aralarındaki akrabalık yol(lar)ını bulur, insan tarafından okunabilir bir
+başlık + adım listesi gösterir ve seçili yolu soy ağacı haritasında **turuncu** ile vurgular
+(uç kişiler turuncu, aradaki kişiler turkuaz kenarlıkla; uç kartlarda "1. kişi" / "2. kişi"
+rozeti). Bağ yoksa "Akrabalık bağı bulunamadı" mesajı gösterilir ve mevcut ağaç bozulmaz.
+
+* **Servis**: `IFamilyTreeService.FindRelationshipAsync(p1, p2)` → `RelationshipResultDto`
+  (`Paths` listesi + tüm yolların birleşimini içeren `Graph`).
+  Tüm `Persons` tablosunun (yalnızca `Id`, `AnneId`, `BabaId`) ve tüm `SpouseRelationships`
+  çiftlerinin belleğe alınmasıyla yönsüz bir graf kurulur; kenarlar: ebeveyn↔çocuk ("up"/
+  "down") ve eş↔eş ("spouse"). 1. kişiden 2. kişiye **BFS** ile en kısa yol bulunur.
+  Global query filtresi silinmiş kişileri elediğinden yol silinmiş kişilerden geçmez.
+* **Birden fazla yol**: iki kişi birbirine birden çok biçimde bağlı olabilir (ör. hem
+  evlilik hem ortak çocuk, ya da hem kan bağı hem evlilik). Aday yollar şöyle üretilir:
+  (1) tüm kenarlarla en kısa yol (birincil), (2) yalnızca kan bağı kenarlarıyla en kısa yol,
+  (3) birincil/kan-bağı yolun her kenarı sırayla engellenip yeniden BFS (Yen'in k-en-kısa
+  yol algoritmasının hafif bir çeşidi). Adaylar sonra elenir:
+  - Birincilden **6 adımdan fazla** uzun olanlar,
+  - **Eş dolambacı**: bir yoldaki eş kenarı, iki ucu ortak çocuğa sahip (co-parent) ve
+    sorgulanan çiftin kendisi olmayan bir çiftse, o yol aynı ilişkiyi "eş üzerinden" dolanan
+    sahte bir alternatiftir → elenir (birincil yol her koşulda korunur),
+  - **Aynı başlık**: farklı düğümlerden geçse de aynı `Summary`'yi üreten yollar
+    tekilleştirilir (ör. "anne üzerinden" ve "baba üzerinden" kardeşlik → tek "öz kardeşler").
+  En fazla 4 farklı yol döndürülür; istemci bunları sonuç panelinde sekme (pill) olarak
+  gösterir, sekmeye tıklamak yalnızca haritadaki vurguyu değiştirir (yeniden istek atılmaz).
+* **Yol türü** (`PathKind`): "Kan bağı", "Evlilik bağı", "Kan + evlilik" veya "Ortak soy"
+  (aşağı-sonra-yukarı / V biçimi — iki kişinin ortak bir alt soyu var).
+* **API**: `GET /api/familytree/relationship?a={id}&b={id}` (tüm authenticated kullanıcılar).
+* **Başlık üretimi** (`BuildRelationshipSummary`): en kısa **kan bağı** yolu her zaman
+  "önce yukarı (ortak ataya), sonra aşağı" (dağ) biçimindedir. `up`/`down` adım sayılarından:
+  ata/torun (anne/baba, büyükanne/baba, torun...), kardeş (öz/üvey — ortak ebeveyn
+  sayısına göre), yeğen, amca/dayı/hala/teyze (ebeveyn tarafı + `Cinsiyet` alanına göre;
+  cinsiyet yoksa "amcası veya halası" gibi belirsiz etiket) ve kuzen (`min(up,down)-1`.
+  derece, `|up-down|` kuşak uzaklık) etiketleri hesaplanır. "Aşağı-sonra-yukarı" (V/vadi)
+  biçiminde ise iki kişinin ortak bir alt soyu vardır → "X adlı çocuğun ortak ebeveyni" /
+  "ortak alt soy (...) üzerinden bağlı". Yolda bir **eş kenarı** varsa kan bağı formülü
+  uygulanmaz, "evlilik bağı üzerinden akraba (N adımlık bağ)" denir. Bunların dışındaki
+  (çok tepeli/vadili) yollarda genel "N adımlık bağ" metnine düşülür.
+* **Haritada çizim**: **tüm yolların birleşimindeki** kişileri ve aralarındaki bağları içeren
+  bir grafik, mevcut `BuildConnectedGraphAsync` yardımcısıyla (Sülale görünümünden ayrıştırıldı
+  — Kahn topolojik nesil + eş hizalama) oluşturulur; istemci (`familytree.js` `loadRelationship`
+  + `selectRelationshipPath`) bunu mevcut D3 render altyapısına bir kez verir, sekme değişince
+  yalnızca `pathEdgeKeys` / `pathNodeIds` / `pathEndpointIds` kümeleri güncellenip `render()`
+  çağrılır (grafik yeniden yüklenmez). Bir karta tıklamak (mevcut davranış) o kişiyi merkez
+  yapıp normal moda döner; `loadBaseTree`/`loadSulaleTree` vurguyu temizler.
+* **PDF / PNG / SVG dışa aktarma**: dışa aktarma zaten DOM'daki stil özniteliklerini
+  klonladığından (bkz. Bölüm 51.1) seçili yolun turuncu vurgusu görsele kendiliğinden yansır.
+  Ek olarak `getExportHeader()`, akrabalık modunda dosya başlığını "Akrabalık Bağı: A — B",
+  "N/M. yol · &lt;tür&gt; (K adım)", özet ve numaralı adım listesiyle doldurur; başlık yüksekliği
+  satır sayısına göre büyür. Dosya adı da yolu yansıtır: `akrabalik-bagi-A-B-yol-N.svg`
+  (tek yol varsa `-yol-N` eki yok). Farklı sekme seçiliyken yapılan dışa aktarma farklı
+  başlık + farklı turuncu bağ kümesi üretir.
+
+**Paylaşılabilir bağlantı ve Kişi Detay kısayolu:**
+
+* `/FamilyTree?rel1={id}&rel2={id}` doğrudan açıldığında akrabalık sorgusu otomatik çalışır
+  (`FamilyTreeController.Index` `rel1`/`rel2` parametrelerini alıp `id`'yi `rel1`'e ayarlar,
+  ViewBag üzerinden `familytree.js`'e `data-rel1`/`data-rel2` olarak geçer). "Akrabalık Bağını
+  Bul" butonuyla sorgu çalıştığında da bu URL `history.pushState` ile adres çubuğuna yazılır;
+  sonuç panelindeki "Paylaşılabilir bağlantıyı kopyala" butonu tam URL'yi panoya kopyalar.
+  `popstate` ve "Temizle" (`/FamilyTree`) bu durumu doğru yönetir.
+* **Kişi Detay sayfası** (`/Person/Details/{id}`): "Akrabalık Bağı Bul" kartı — bir kişi
+  arayıp seçince "Haritada Göster" butonu `/FamilyTree?rel1={buKişi}&rel2={seçilen}` adresine
+  götürür. Arama `/api/person/search` (mevcut endpoint, `excludeId` ile kendini eler) kullanır.
+* Bağ bulunamazsa harita boş kalmasın diye 1. kişinin temel ağacı gösterilip uyarı metni
+  üstüne bindirilir.
+
+Gerçek kullanıcı verisiyle (headless tarayıcı) doğrulandı: dede–torun ("büyükbabası", 2
+vurgulu bağ), öz kardeş, birinci kuzen (2 kuşak uzaktan), bağ bulunamayan çift; ayrıca Kişi
+Detay kısayolundan `/FamilyTree?rel1=&rel2=` adresine geçiş, o URL'nin doğrudan açılışta
+sorguyu çalıştırması ve arama kutularının kişi adlarıyla önden doldurulması — hepsi beklenen
+sonucu üretti. Çoklu yol için: evli ve ortak çocuğu olan bir çiftte tam iki yol
+("Evlilik bağı / eşler" + "Ortak soy / X adlı çocuğun ortak ebeveyni") döndüğü, sekme
+değiştirince harita vurgusunun (1 → 2 turuncu bağ) yeniden istek atmadan güncellendiği; buna
+karşın basit ilişkilerde (dede, kardeş, kuzen) eş dolambacı ve aynı-başlık elemesi sayesinde
+tek yol kaldığı görsel olarak doğrulandı. Dışa aktarma için: çoklu yollu çiftte 1. ve 2. yol
+seçiliyken alınan SVG'lerin farklı dosya adı (`...-yol-1` / `...-yol-2`), farklı başlık metni
+ve farklı sayıda turuncu bağ içerdiği; kuzen örneğinde PNG başlığının "Akrabalık Bağı: A — B"
++ "Yol: Kan bağı (6 adım)" + 6 adımlık liste ile doğru render edildiği doğrulandı.
+
+---
+
 # 52. Öncelikli Geliştirme Prensibi
 
 Öncelik:

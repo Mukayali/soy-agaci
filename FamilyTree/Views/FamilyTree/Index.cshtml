@@ -5,6 +5,8 @@
     string? personName = ViewBag.PersonName;
     int? sulaleId = ViewBag.SulaleId;
     string? sulaleAdi = ViewBag.SulaleAdi;
+    int? rel1 = ViewBag.Rel1;
+    int? rel2 = ViewBag.Rel2;
     var sulaleler = (List<SulaleListItemViewModel>?)ViewBag.Sulaleler ?? new List<SulaleListItemViewModel>();
     var baslik = sulaleAdi != null ? $"- {sulaleAdi} Sülalesi" : (personName != null ? $"- {personName}" : "");
 }
@@ -17,7 +19,7 @@
 }
 else
 {
-    <div id="familyTreeApp" data-person-id="@personId" data-sulale-id="@sulaleId">
+    <div id="familyTreeApp" data-person-id="@personId" data-sulale-id="@sulaleId" data-rel1="@rel1" data-rel2="@rel2">
         <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
             <div class="position-relative">
                 <input type="text" id="treeSearch" class="form-control" style="width:260px;" placeholder="Kişi ara ve merkez yap..." autocomplete="off" />
@@ -61,6 +63,28 @@ else
             </div>
         </div>
 
+        <div class="card mb-2">
+            <div class="card-body py-2">
+                <div class="d-flex flex-wrap gap-2 align-items-end">
+                    <div class="position-relative">
+                        <label for="relPerson1" class="form-label mb-0 small text-muted">1. Kişi</label>
+                        <input type="text" id="relPerson1" class="form-control form-control-sm" style="width:220px;" placeholder="Ad, soyad veya TC" autocomplete="off" />
+                        <input type="hidden" id="relPerson1Id" />
+                        <div id="relPerson1Results" class="list-group position-absolute w-100" style="z-index:1001;"></div>
+                    </div>
+                    <div class="position-relative">
+                        <label for="relPerson2" class="form-label mb-0 small text-muted">2. Kişi</label>
+                        <input type="text" id="relPerson2" class="form-control form-control-sm" style="width:220px;" placeholder="Ad, soyad veya TC" autocomplete="off" />
+                        <input type="hidden" id="relPerson2Id" />
+                        <div id="relPerson2Results" class="list-group position-absolute w-100" style="z-index:1001;"></div>
+                    </div>
+                    <button type="button" id="relFindBtn" class="btn btn-warning btn-sm">Akrabalık Bağını Bul</button>
+                    <button type="button" id="relClearBtn" class="btn btn-outline-secondary btn-sm d-none">Temizle</button>
+                </div>
+                <div id="relResult" class="mt-2 small d-none"></div>
+            </div>
+        </div>
+
         <div id="treeWrapper" class="border rounded position-relative" style="height:70vh; background:#fafafa; overflow:hidden;">
             <div id="treeLoading" class="position-absolute top-50 start-50 translate-middle text-muted d-none">Yükleniyor...</div>
             <svg id="treeSvg" width="100%" height="100%"></svg>
@@ -69,6 +93,7 @@ else
         <div class="d-flex gap-4 mt-2 text-muted small">
             <span><span style="display:inline-block;width:20px;border-top:2px solid #555;vertical-align:middle;"></span> Ebeveyn - Çocuk</span>
             <span><span style="display:inline-block;width:20px;border-top:2px dashed #c2185b;vertical-align:middle;"></span> Eş</span>
+            <span><span style="display:inline-block;width:20px;border-top:4px solid #e65100;vertical-align:middle;"></span> Akrabalık yolu</span>
             <span><span class="d-inline-block rounded-circle" style="width:10px;height:10px;background:#9e9e9e;"></span> Vefat etti</span>
             <span>Kartın üzerine tıklayınca o kişi merkez olur; <strong>↗</strong> ikonuna tıklayınca kişi detayına gidilir.</span>
         </div>

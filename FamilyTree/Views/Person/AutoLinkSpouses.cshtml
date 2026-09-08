@@ -1,0 +1,50 @@
+@model List<ParentSpouseSuggestionViewModel>
+@{
+    ViewData["Title"] = "Eşleri Anne/Baba Bilgisinden Doldur";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h2>Eşleri Anne/Baba Bilgisinden Doldur</h2>
+    <a asp-action="Index" class="btn btn-outline-secondary">← Kişiler Listesine Dön</a>
+</div>
+
+<p class="text-muted">
+    Ortak çocuğu bulunan (yani bir kişinin hem <strong>Anne</strong> hem <strong>Baba</strong> alanı dolu olan)
+    ve aralarında henüz kayıtlı bir eş ilişkisi bulunmayan anne-baba çiftleri aşağıda listelenir.
+    "Tümünü Eş Olarak Bağla" ile bu çiftlerin hepsi için bir eş ilişkisi oluşturulur.
+    Evlilik/boşanma tarihi girilmez (bu bilgi çocuk kayıtlarından çıkarılamaz); gerekirse daha sonra
+    kişi detay sayfasından düzenlenebilir. Mevcut eş ilişkileri değiştirilmez.
+</p>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">Anne/baba bilgisinden türetilebilecek yeni bir eş ilişkisi bulunamadı.</div>
+}
+else
+{
+    <form asp-action="AutoLinkSpouses" method="post" class="mb-3"
+          onsubmit="return confirm('@Model.Count anne-baba çifti için eş ilişkisi oluşturulacak. Devam edilsin mi?');">
+        <input type="hidden" name="confirm" value="true" />
+        <button type="submit" class="btn btn-primary">Tümünü Eş Olarak Bağla (@Model.Count çift)</button>
+    </form>
+
+    <table class="table table-hover align-middle">
+        <thead>
+            <tr>
+                <th>Baba</th>
+                <th>Anne</th>
+                <th class="text-end">Ortak Çocuk</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var s in Model)
+            {
+                <tr>
+                    <td><a asp-action="Details" asp-route-id="@s.BabaId">@s.BabaAdSoyad</a></td>
+                    <td><a asp-action="Details" asp-route-id="@s.AnneId">@s.AnneAdSoyad</a></td>
+                    <td class="text-end">@s.OrtakCocukSayisi</td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}

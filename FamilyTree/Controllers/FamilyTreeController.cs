@@ -14,8 +14,16 @@ public class FamilyTreeController : Controller
         _context = context;
     }
 
-    public async Task<IActionResult> Index(int? id)
+    public async Task<IActionResult> Index(int? id, int? rel1, int? rel2)
     {
+        // Paylaşılabilir akrabalık bağı bağlantısı: /FamilyTree?rel1=X&rel2=Y
+        if (rel1.HasValue && rel2.HasValue)
+        {
+            ViewBag.Rel1 = rel1.Value;
+            ViewBag.Rel2 = rel2.Value;
+            id ??= rel1.Value;
+        }
+
         if (id == null)
         {
             var first = await _context.Persons.AsNoTracking().OrderBy(p => p.Id).Select(p => p.Id).FirstOrDefaultAsync();
@@ -25,7 +33,7 @@ public class FamilyTreeController : Controller
                 return View();
             }
 
-            return RedirectToAction(nameof(Index), new { id = first });
+            return RedirectToAction(nameof(Index), new { id = first, rel1, rel2 });
         }
 
         var person = await _context.Persons.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);

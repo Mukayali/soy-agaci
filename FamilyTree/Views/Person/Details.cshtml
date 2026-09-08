@@ -105,6 +105,21 @@
     </div>
 }
 
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Akrabalık Bağı Bul</h5>
+        <p class="text-muted small mb-2">Bu kişi ile başka bir kişi arasındaki akrabalık yolunu soy ağacı haritasında görün.</p>
+        <div class="d-flex flex-wrap gap-2 align-items-start position-relative" style="max-width:520px;">
+            <div class="position-relative flex-grow-1">
+                <input type="text" id="relationSearch" class="form-control" placeholder="Kişi ara... (ad, soyad veya TC)" autocomplete="off" />
+                <input type="hidden" id="relationTargetId" />
+                <div id="relationResults" class="list-group position-absolute w-100" style="top:100%;z-index:1000;"></div>
+            </div>
+            <button type="button" id="relationGoBtn" class="btn btn-warning" disabled>Haritada Göster</button>
+        </div>
+    </div>
+</div>
+
 <div class="row">
     <div class="col-md-6">
         <div class="card mb-4">
@@ -424,6 +439,57 @@
                         });
                 }, 250);
             });
+        })();
+
+        (function () {
+            const input = document.getElementById('relationSearch');
+            const results = document.getElementById('relationResults');
+            const hidden = document.getElementById('relationTargetId');
+            const goBtn = document.getElementById('relationGoBtn');
+            if (!input) {
+                return;
+            }
+            let timeoutId;
+
+            function navigate() {
+                if (!hidden.value) {
+                    return;
+                }
+                window.location.href = '/FamilyTree?rel1=@Model.Id&rel2=' + encodeURIComponent(hidden.value);
+            }
+
+            input.addEventListener('input', function () {
+                hidden.value = '';
+                goBtn.disabled = true;
+                clearTimeout(timeoutId);
+                const q = input.value.trim();
+                if (q.length < 2) {
+                    results.innerHTML = '';
+                    return;
+                }
+                timeoutId = setTimeout(function () {
+                    fetch('/api/person/search?q=' + encodeURIComponent(q) + '&excludeId=@Model.Id')
+                        .then(r => r.json())
+                        .then(data => {
+                            results.innerHTML = '';
+                            data.forEach(function (item) {
+                                const el = document.createElement('button');
+                                el.type = 'button';
+                                el.className = 'list-group-item list-group-item-action';
+                                el.textContent = item.adSoyad + (item.dogumYili ? ' (' + item.dogumYili + ')' : '') + (item.tcKimlikNoMasked ? ' — TC: ' + item.tcKimlikNoMasked : '');
+                                el.addEventListener('click', function () {
+                                    input.value = item.adSoyad;
+                                    hidden.value = item.id;
+                                    goBtn.disabled = false;
+                                    results.innerHTML = '';
+                                });
+                                results.appendChild(el);
+                            });
+                        });
+                }, 250);
+            });
+
+            goBtn.addEventListener('click', navigate);
         })();
     </script>
 }

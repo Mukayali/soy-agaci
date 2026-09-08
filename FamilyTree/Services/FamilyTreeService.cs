@@ -424,6 +424,19 @@ public class FamilyTreeService : IFamilyTreeService
             .Where(p => p.PersonSulaleler.Any(ps => ps.SulaleId == sulaleId))
             .ToListAsync();
 
+        return await BuildConnectedGraphAsync(members);
+    }
+
+    /// <summary>
+    /// Verilen kişi kümesini, yalnızca küme içindeki anne/baba ve eş bağlarıyla birlikte tek bir
+    /// grafiğe dönüştürür. Nesil numaraları kan bağı derinliğine göre (Kahn'ın topolojik sıralaması)
+    /// hesaplanır ve evli çiftler aynı satıra hizalanır. İsteğe bağlı <paramref name="decorate"/> ile
+    /// her düğüme rol etiketi / merkez bayrağı verilebilir.
+    /// </summary>
+    private async Task<FamilyTreeGraphDto> BuildConnectedGraphAsync(
+        List<Person> members,
+        Func<Person, (string Role, bool IsCenter)>? decorate = null)
+    {
         var graph = new FamilyTreeGraphDto();
         if (members.Count == 0)
         {
@@ -525,7 +538,8 @@ public class FamilyTreeService : IFamilyTreeService
 
         foreach (var member in members)
         {
-            graph.Nodes.Add(ToNode(member, generation[member.Id], role: string.Empty));
+            var (role, isCenter) = decorate?.Invoke(member) ?? (string.Empty, false);
+            graph.Nodes.Add(ToNode(member, generation[member.Id], role, isCenter));
         }
 
         foreach (var (childId, parents) in parentsOf)
@@ -543,6 +557,501 @@ public class FamilyTreeService : IFamilyTreeService
 
         return graph;
     }
+
+    public async Task<RelationshipResultDto> FindRelationshipAsync(int person1Id, int person2Id)
+    {
+        var p1 = await _context.Persons.AsNoTracking().FirstOrDefaultAsync(p => p.Id == person1Id);
+        var p2 = await _context.Persons.AsNoTracking().FirstOrDefaultAsync(p => p.Id == person2Id);
+
+        var result = new RelationshipResultDto
+        {
+            Person1Id = person1Id,
+            Person2Id = person2Id,
+            Person1Name = p1 != null ? $"{p1.Ad} {p1.Soyad}" : string.Empty,
+            Person2Name = p2 != null ? $"{p2.Ad} {p2.Soyad}" : string.Empty,
+        };
+
+        if (p1 == null || p2 == null)
+        {
+            result.Summary = "Seçilen kişilerden en az biri bulunamadı.";
+            return result;
+        }
+
+        if (person1Id == person2Id)
+        {
+            result.Related = true;
+            result.Summary = "Aynı kişi seçildi.";
+            result.Paths.Add(new RelationshipPathDto
+            {
+                Summary = "Aynı kişi seçildi.",
+                Kind = "Kan bağı",
+                Length = 0,
+                PersonIds = new List<int> { person1Id },
+            });
+            result.Graph = await BuildConnectedGraphAsync(
+                await LoadPersonsWithPhotosAsync(new[] { person1Id }),
+                decorate: _ => ("Seçilen kişi", true));
+            return result;
+        }
+
+        // Tüm kişi grafiğini (yalnızca Id + ebeveyn Id'leri) ve eş çiftlerini belleğe al.
+        var all = await _context.Persons.AsNoTracking()
+            .Select(p => new { p.Id, p.AnneId, p.BabaId })
+            .ToListAsync();
+        var spousePairs = await _context.SpouseRelationships.AsNoTracking()
+            .Select(sr => new { sr.Person1Id, sr.Person2Id })
+            .ToListAsync();
+
+        var adj = new Dictionary<int, List<(int To, string Kind)>>();
+        void AddEdge(int from, int to, string kind)
+        {
+            if (!adj.TryGetValue(from, out var list))
+            {
+                list = new List<(int, string)>();
+                adj[from] = list;
+            }
+
+            list.Add((to, kind));
+        }
+
+        foreach (var p in all)
+        {
+            if (p.AnneId is int anneId)
+            {
+                AddEdge(p.Id, anneId, "up");
+                AddEdge(anneId, p.Id, "down");
+            }
+
+            if (p.BabaId is int babaId)
+            {
+                AddEdge(p.Id, babaId, "up");
+                AddEdge(babaId, p.Id, "down");
+            }
+        }
+
+        foreach (var sp in spousePairs)
+        {
+            AddEdge(sp.Person1Id, sp.Person2Id, "spouse");
+            AddEdge(sp.Person2Id, sp.Person1Id, "spouse");
+        }
+
+        // 1. kişiden 2. kişiye genişlik öncelikli arama. bloodOnly=true eş kenarlarını
+        // atlar; blocked belirli (yönsüz) kenarları devre dışı bırakır (alternatif yol için).
+        (List<int> Ids, List<string> Kinds)? Bfs(bool bloodOnly, HashSet<(int, int)>? blocked)
+        {
+            var prev = new Dictionary<int, (int From, string Kind)>();
+            var visited = new HashSet<int> { person1Id };
+            var queue = new Queue<int>();
+            queue.Enqueue(person1Id);
+            var found = false;
+
+            while (queue.Count > 0)
+            {
+                var current = queue.Dequeue();
+                if (current == person2Id)
+                {
+                    found = true;
+                    break;
+                }
+
+                if (!adj.TryGetValue(current, out var neighbors))
+                {
+                    continue;
+                }
+
+                foreach (var (to, kind) in neighbors)
+                {
+                    if (bloodOnly && kind == "spouse")
+                    {
+                        continue;
+                    }
+
+                    if (blocked != null && blocked.Contains((current, to)))
+                    {
+                        continue;
+                    }
+
+                    if (visited.Add(to))
+                    {
+                        prev[to] = (current, kind);
+                        queue.Enqueue(to);
+                    }
+                }
+            }
+
+            if (!found)
+            {
+                return null;
+            }
+
+            var ids = new List<int>();
+            var kinds = new List<string>();
+            var node = person2Id;
+            while (node != person1Id)
+            {
+                ids.Add(node);
+                var (from, kind) = prev[node];
+                kinds.Add(kind);
+                node = from;
+            }
+
+            ids.Add(person1Id);
+            ids.Reverse();
+            kinds.Reverse();
+            return (ids, kinds);
+        }
+
+        var primary = Bfs(false, null);
+        if (primary == null)
+        {
+            result.Summary = "Akrabalık bağı bulunamadı. Kayıtlı anne/baba ve eş ilişkileri üzerinden bu iki kişi birbirine bağlanamıyor.";
+            return result;
+        }
+
+        var candidates = new List<(List<int> Ids, List<string> Kinds)> { primary.Value };
+
+        // Yalnızca kan bağıyla giden yol (varsa) her zaman bir aday.
+        var bloodOnlyPath = Bfs(true, null);
+        if (bloodOnlyPath != null)
+        {
+            candidates.Add(bloodOnlyPath.Value);
+        }
+
+        // Birincil (ve varsa kan bağı) yolun her kenarını sırayla engelleyerek alternatif ara.
+        var seeds = new List<List<int>> { primary.Value.Ids };
+        if (bloodOnlyPath != null && string.Join(",", bloodOnlyPath.Value.Ids) != string.Join(",", primary.Value.Ids))
+        {
+            seeds.Add(bloodOnlyPath.Value.Ids);
+        }
+
+        foreach (var seedIds in seeds)
+        {
+            for (var i = 0; i + 1 < seedIds.Count; i++)
+            {
+                var blocked = new HashSet<(int, int)>
+                {
+                    (seedIds[i], seedIds[i + 1]),
+                    (seedIds[i + 1], seedIds[i]),
+                };
+
+                var alt = Bfs(false, blocked);
+                if (alt != null)
+                {
+                    candidates.Add(alt.Value);
+                }
+            }
+        }
+
+        // Ortak çocuğu olan (anne+baba) çiftler — "eş dolambacı" filtrelemesi için.
+        var coParentPairs = new HashSet<(int, int)>();
+        foreach (var p in all)
+        {
+            if (p.AnneId is int ca && p.BabaId is int cb)
+            {
+                coParentPairs.Add((Math.Min(ca, cb), Math.Max(ca, cb)));
+            }
+        }
+
+        // Bir yoldaki eş kenarı, iki ucu ortak çocuğa sahip (yani zaten yol üstünde bir
+        // çocuk üzerinden bağlı) bir çiftse ve bu çift sorgulanan iki kişinin kendisi
+        // DEĞİLSE, bu yol aynı ilişkiyi "eşinin üzerinden" dolanarak tekrar anlatan sahte
+        // bir alternatiftir — ele.
+        bool IsSpouseDetour(List<int> ids, List<string> kinds)
+        {
+            for (var i = 0; i < kinds.Count; i++)
+            {
+                if (kinds[i] != "spouse")
+                {
+                    continue;
+                }
+
+                var u = ids[i];
+                var v = ids[i + 1];
+                var isQueriedCouple =
+                    (u == person1Id && v == person2Id) || (u == person2Id && v == person1Id);
+                if (!isQueriedCouple && coParentPairs.Contains((Math.Min(u, v), Math.Max(u, v))))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        // Tekilleştir (kişi dizisine göre), kısadan uzuna sırala, aşırı dolambaçlıları ve
+        // eş dolambaçlarını ele.
+        var primaryLength = primary.Value.Ids.Count - 1;
+        var seenKeys = new HashSet<string>();
+        var distinctPaths = new List<(List<int> Ids, List<string> Kinds)>();
+        foreach (var candidate in candidates.OrderBy(c => c.Ids.Count))
+        {
+            if ((candidate.Ids.Count - 1) > primaryLength + 6)
+            {
+                continue;
+            }
+
+            // Birincil yol her koşulda kalır; alternatifler eş dolambacıysa elenir.
+            if (distinctPaths.Count > 0 && IsSpouseDetour(candidate.Ids, candidate.Kinds))
+            {
+                continue;
+            }
+
+            if (seenKeys.Add(string.Join(",", candidate.Ids)))
+            {
+                distinctPaths.Add(candidate);
+            }
+        }
+
+        distinctPaths = distinctPaths.Take(12).ToList();
+
+        var allPathIds = distinctPaths.SelectMany(d => d.Ids).Distinct().ToList();
+        var pathPersons = await LoadPersonsWithPhotosAsync(allPathIds);
+        var byId = pathPersons.ToDictionary(p => p.Id);
+
+        List<RelationshipStepDto> BuildSteps(List<int> ids, List<string> kinds)
+        {
+            var steps = new List<RelationshipStepDto>();
+            for (var i = 0; i < kinds.Count; i++)
+            {
+                var from = byId[ids[i]];
+                var to = byId[ids[i + 1]];
+                var relation = kinds[i] switch
+                {
+                    "up" => to.Id == from.AnneId ? "annesi" : (to.Id == from.BabaId ? "babası" : "ebeveyni"),
+                    "down" => "çocuğu",
+                    "spouse" => "eşi",
+                    _ => "akrabası",
+                };
+
+                steps.Add(new RelationshipStepDto
+                {
+                    FromId = from.Id,
+                    FromName = $"{from.Ad} {from.Soyad}",
+                    ToId = to.Id,
+                    ToName = $"{to.Ad} {to.Soyad}",
+                    Relation = relation,
+                });
+            }
+
+            return steps;
+        }
+
+        static string PathKind(List<string> kinds)
+        {
+            var hasSpouse = kinds.Contains("spouse");
+            var hasBlood = kinds.Any(k => k is "up" or "down");
+            if (hasSpouse && hasBlood)
+            {
+                return "Kan + evlilik";
+            }
+
+            if (hasSpouse)
+            {
+                return "Evlilik bağı";
+            }
+
+            if (kinds.Count > 0 && kinds[0] == "down" && kinds.Contains("up"))
+            {
+                return "Ortak soy";
+            }
+
+            return "Kan bağı";
+        }
+
+        // Aynı ilişkiyi (aynı başlık) farklı düğümlerden dolaşan yolları tekilleştir —
+        // ör. "anne üzerinden" ve "baba üzerinden" kardeşlik ikisi de "öz kardeşler" der.
+        // En fazla 4 farklı yol göster.
+        var seenSummaries = new HashSet<string>();
+        foreach (var d in distinctPaths)
+        {
+            var summary = BuildRelationshipSummary(d.Ids, d.Kinds, byId);
+            if (result.Paths.Count > 0 && !seenSummaries.Add(summary))
+            {
+                continue;
+            }
+
+            seenSummaries.Add(summary);
+            result.Paths.Add(new RelationshipPathDto
+            {
+                PersonIds = d.Ids,
+                Length = d.Ids.Count - 1,
+                Kind = PathKind(d.Kinds),
+                Summary = summary,
+                Steps = BuildSteps(d.Ids, d.Kinds),
+            });
+
+            if (result.Paths.Count >= 4)
+            {
+                break;
+            }
+        }
+
+        result.Related = true;
+        result.Summary = result.Paths[0].Summary;
+
+        result.Graph = await BuildConnectedGraphAsync(pathPersons, decorate: pp =>
+        {
+            if (pp.Id == person1Id)
+            {
+                return ("1. kişi", false);
+            }
+
+            return pp.Id == person2Id ? ("2. kişi", false) : (string.Empty, false);
+        });
+
+        return result;
+    }
+
+    private async Task<List<Person>> LoadPersonsWithPhotosAsync(IEnumerable<int> ids)
+    {
+        var idList = ids.Distinct().ToList();
+        return await _context.Persons
+            .AsNoTracking()
+            .Include(p => p.Photos)
+            .Where(p => idList.Contains(p.Id))
+            .ToListAsync();
+    }
+
+    /// <summary>
+    /// Yol adımlarından (yukarı = ebeveyne, aşağı = çocuğa, eş) okunabilir bir akrabalık başlığı üretir.
+    /// En kısa kan bağı yolu her zaman "önce yukarı, sonra aşağı" biçimindedir (ortak atadan geçer).
+    /// </summary>
+    private static string BuildRelationshipSummary(List<int> pathIds, List<string> kinds, Dictionary<int, Person> byId)
+    {
+        var name1 = $"{byId[pathIds[0]].Ad} {byId[pathIds[0]].Soyad}";
+        var name2 = $"{byId[pathIds[^1]].Ad} {byId[pathIds[^1]].Soyad}";
+
+        if (kinds.Contains("spouse"))
+        {
+            if (kinds.Count == 1)
+            {
+                return $"{name1} ile {name2} eşler.";
+            }
+
+            return $"{name1} ile {name2} evlilik bağı üzerinden akraba ({kinds.Count} adımlık bağ).";
+        }
+
+        var up = kinds.Count(k => k == "up");
+        var down = kinds.Count(k => k == "down");
+
+        // Beklenen düzen: tüm "up" adımları, ardından tüm "down" adımları.
+        var monotonic = true;
+        var seenDown = false;
+        foreach (var k in kinds)
+        {
+            if (k == "down")
+            {
+                seenDown = true;
+            }
+            else if (seenDown)
+            {
+                monotonic = false;
+                break;
+            }
+        }
+
+        if (!monotonic)
+        {
+            // "Aşağı sonra yukarı" (V) biçimi: iki kişinin ortak bir alt soyu (çocuk/torun) var.
+            var valley = true;
+            var seenUp = false;
+            foreach (var k in kinds)
+            {
+                if (k == "up")
+                {
+                    seenUp = true;
+                }
+                else if (seenUp)
+                {
+                    valley = false;
+                    break;
+                }
+            }
+
+            if (valley)
+            {
+                var bottom = byId[pathIds[down]];
+                var bottomName = $"{bottom.Ad} {bottom.Soyad}";
+                if (down == 1 && up == 1)
+                {
+                    return $"{name1} ile {name2}, {bottomName} adlı çocuğun ortak ebeveyni.";
+                }
+
+                return $"{name1} ile {name2} ortak alt soy ({bottomName}) üzerinden bağlı.";
+            }
+
+            return $"{name1} ile {name2} akraba ({kinds.Count} adımlık bağ).";
+        }
+
+        if (up == 0)
+        {
+            return $"{name2}, {name1} kişisinin {DescendantLabel(down)}.";
+        }
+
+        if (down == 0)
+        {
+            var parentEdgeChildId = pathIds[up - 1];
+            var parentEdgeParentId = pathIds[up];
+            return $"{name2}, {name1} kişisinin {AncestorLabel(up, byId[parentEdgeChildId], parentEdgeParentId)}.";
+        }
+
+        if (up == 1 && down == 1)
+        {
+            var a = byId[pathIds[0]];
+            var b = byId[pathIds[^1]];
+            var sharedAnne = a.AnneId.HasValue && a.AnneId == b.AnneId;
+            var sharedBaba = a.BabaId.HasValue && a.BabaId == b.BabaId;
+            var tur = sharedAnne && sharedBaba ? "öz" : "üvey";
+            return $"{name1} ile {name2} {tur} kardeşler.";
+        }
+
+        if (up == 1 && down == 2)
+        {
+            return $"{name2}, {name1} kişisinin yeğeni.";
+        }
+
+        if (up == 2 && down == 1)
+        {
+            var self = byId[pathIds[0]];
+            var parentOnPath = pathIds[1];
+            var relative = byId[pathIds[^1]];
+            var anneSide = self.AnneId == parentOnPath;
+            var label = relative.Cinsiyet switch
+            {
+                Gender.Erkek => anneSide ? "dayısı" : "amcası",
+                Gender.Kadin => anneSide ? "teyzesi" : "halası",
+                _ => anneSide ? "dayısı veya teyzesi" : "amcası veya halası",
+            };
+
+            return $"{name2}, {name1} kişisinin {label}.";
+        }
+
+        // up >= 2 && down >= 2: kuzenler
+        var derece = Math.Min(up, down) - 1;
+        var uzaklik = Math.Abs(up - down);
+        if (uzaklik == 0)
+        {
+            return $"{name1} ile {name2} {derece}. dereceden kuzenler.";
+        }
+
+        return $"{name1} ile {name2} {derece}. dereceden kuzenler ({uzaklik} kuşak uzaktan).";
+    }
+
+    private static string DescendantLabel(int down) => down switch
+    {
+        1 => "çocuğu",
+        2 => "torunu",
+        3 => "torununun çocuğu",
+        _ => $"{down}. kuşak alt soyundan",
+    };
+
+    private static string AncestorLabel(int up, Person childOnLastEdge, int parentId) => up switch
+    {
+        1 => parentId == childOnLastEdge.AnneId ? "annesi" : "babası",
+        2 => parentId == childOnLastEdge.AnneId ? "büyükannesi" : "büyükbabası",
+        3 => parentId == childOnLastEdge.AnneId ? "büyük büyükannesi" : "büyük büyükbabası",
+        _ => $"{up}. kuşak üstündeki atası",
+    };
 
     private static void DeduplicateNodes(FamilyTreeGraphDto graph)
     {

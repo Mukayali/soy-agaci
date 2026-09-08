@@ -51,7 +51,41 @@
         currentSulaleId: null,
         nodesById: new Map(),
         links: [],
+        pathNodeIds: new Set(),
+        pathEndpointIds: new Set(),
+        pathEdgeKeys: new Set(),
+        relPaths: [],
+        relSelectedPath: 0,
+        relLinkParams: null,
     };
+
+    function edgeKey(a, b) {
+        return Math.min(a, b) + '-' + Math.max(a, b);
+    }
+
+    function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.textContent = text == null ? '' : String(text);
+        return div.innerHTML;
+    }
+
+    function clearRelationshipHighlight() {
+        state.pathNodeIds = new Set();
+        state.pathEndpointIds = new Set();
+        state.pathEdgeKeys = new Set();
+        state.relPaths = [];
+        state.relSelectedPath = 0;
+        state.relLinkParams = null;
+        var resultEl = document.getElementById('relResult');
+        if (resultEl) {
+            resultEl.classList.add('d-none');
+            resultEl.innerHTML = '';
+        }
+        var clearBtn = document.getElementById('relClearBtn');
+        if (clearBtn) {
+            clearBtn.classList.add('d-none');
+        }
+    }
 
     var EXPAND_BUTTON_IDS = [
         'showGrandparentsBtn',
@@ -224,10 +258,17 @@
             .append('path')
             .attr('class', function (d) { return 'link ' + d.relationship; })
             .attr('fill', 'none')
-            .attr('stroke', function (d) { return d.relationship === 'spouse' ? '#c2185b' : '#555'; })
-            .attr('stroke-width', 2)
-            .attr('stroke-dasharray', function (d) { return d.relationship === 'spouse' ? '5,4' : null; })
             .merge(linkSel)
+            .attr('stroke', function (d) {
+                if (state.pathEdgeKeys.has(edgeKey(d.source.id, d.target.id))) {
+                    return '#e65100';
+                }
+                return d.relationship === 'spouse' ? '#c2185b' : '#555';
+            })
+            .attr('stroke-width', function (d) {
+                return state.pathEdgeKeys.has(edgeKey(d.source.id, d.target.id)) ? 5 : 2;
+            })
+            .attr('stroke-dasharray', function (d) { return d.relationship === 'spouse' ? '5,4' : null; })
             .attr('d', linkPath);
 
         var nodeSel = nodesLayer.selectAll('g.person-node')
@@ -332,8 +373,13 @@
         merged.attr('transform', function (d) { return 'translate(' + d.x + ',' + d.y + ')'; });
 
         merged.select('rect.card-bg')
-            .attr('stroke', function (d) { return d.isCenter ? '#f57f17' : (d.alive ? '#1976d2' : '#9e9e9e'); })
-            .attr('stroke-width', function (d) { return d.isCenter ? 4 : 2.5; })
+            .attr('stroke', function (d) {
+                if (d.isCenter) return '#f57f17';
+                if (state.pathEndpointIds.has(d.id)) return '#e65100';
+                if (state.pathNodeIds.has(d.id)) return '#00897b';
+                return d.alive ? '#1976d2' : '#9e9e9e';
+            })
+            .attr('stroke-width', function (d) { return (d.isCenter || state.pathNodeIds.has(d.id)) ? 4 : 2.5; })
             .attr('stroke-dasharray', function (d) { return d.alive ? null : '9,6'; });
 
         merged.select('text.name-line1').text(function (d) { return truncate(d.ad || d.name, 16); });
@@ -423,17 +469,64 @@
     }
 
     function logExport(format) {
+        var personId = state.currentPersonId
+            || (state.relLinkParams ? state.relLinkParams.a : null);
         fetch('/api/familytree/log-export', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ personId: state.currentPersonId, format: format }),
+            body: JSON.stringify({ personId: personId, format: format }),
         }).catch(function () { /* günlükleme başarısız olursa dışa aktarmayı engelleme */ });
     }
 
     function safeFileName(centerNode, extension) {
-        var label = centerNode ? centerNode.name : document.getElementById('treeTitle').textContent.replace('Soy Ağacı', '').trim();
+        var header = getExportHeader();
+        var label = header.fileLabel
+            || (centerNode ? centerNode.name : document.getElementById('treeTitle').textContent.replace('Soy Ağacı', '').trim());
         var safeLabel = (label || 'agaci').replace(/[^\p{L}\p{N}]+/gu, '-').replace(/^-+|-+$/g, '');
-        return 'soy-agaci-' + (safeLabel || 'agaci') + '.' + extension;
+        var prefix = header.fileLabel ? 'akrabalik-bagi-' : 'soy-agaci-';
+        return prefix + (safeLabel || 'agaci') + '.' + extension;
+    }
+
+    /**
+     * Dışa aktarılan dosyanın başlığını üretir. Akrabalık bağı modundaysa (state.relPaths dolu)
+     * başlık iki kişiyi, seçili yolun türünü/uzunluğunu, özetini ve adımlarını içerir — böylece
+     * PDF/PNG/SVG hangi yolun vurgulandığını kendi başına anlatır.
+     */
+    function getExportHeader() {
+        var paths = state.relPaths || [];
+        if (paths.length > 0 && state.relLinkParams) {
+            var n1 = state.nodesById.get(state.relLinkParams.a);
+            var n2 = state.nodesById.get(state.relLinkParams.b);
+            var name1 = n1 ? n1.name : '1. kişi';
+            var name2 = n2 ? n2.name : '2. kişi';
+            var idx = state.relSelectedPath || 0;
+            var total = paths.length;
+            var path = paths[idx] || {};
+
+            var subLines = [];
+            subLines.push((total > 1 ? (idx + 1) + '/' + total + '. yol · ' : 'Yol: ') +
+                (path.kind || '') + ' (' + (path.length || 0) + ' adım)');
+            if (path.summary) {
+                subLines.push(path.summary);
+            }
+            (path.steps || []).forEach(function (s, i) {
+                subLines.push((i + 1) + '. ' + s.fromName + ' → ' + s.toName + ': ' + s.relation);
+            });
+
+            return {
+                title: 'Akrabalık Bağı: ' + name1 + ' — ' + name2,
+                subLines: subLines,
+                stepStart: path.summary ? 2 : 1,
+                fileLabel: name1 + '-' + name2 + (total > 1 ? '-yol-' + (idx + 1) : ''),
+            };
+        }
+
+        return {
+            title: document.getElementById('treeTitle').textContent.trim(),
+            subLines: [],
+            stepStart: 0,
+            fileLabel: null,
+        };
     }
 
     /**
@@ -449,8 +542,11 @@
             return null;
         }
 
+        var header = getExportHeader();
+        var headerLineHeight = 16;
+
         var padding = 40;
-        var headerHeight = 70;
+        var headerHeight = 52 + header.subLines.length * headerLineHeight + (header.subLines.length ? 10 : 0);
         var footerHeight = 30;
 
         var minX = d3.min(nodes, function (d) { return d.x; });
@@ -487,16 +583,27 @@
         await inlinePhotoImages(exportSvg);
 
         var centerNode = state.currentPersonId ? state.nodesById.get(state.currentPersonId) : null;
-        var title = document.getElementById('treeTitle').textContent.trim();
 
         var titleEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         titleEl.setAttribute('x', padding);
-        titleEl.setAttribute('y', 34);
+        titleEl.setAttribute('y', 30);
         titleEl.setAttribute('font-size', 20);
         titleEl.setAttribute('font-weight', 'bold');
         titleEl.setAttribute('fill', '#212121');
-        titleEl.textContent = title;
+        titleEl.textContent = header.title;
         exportSvg.appendChild(titleEl);
+
+        header.subLines.forEach(function (line, i) {
+            var lineEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            lineEl.setAttribute('x', padding);
+            lineEl.setAttribute('y', 30 + 22 + i * headerLineHeight);
+            var isStep = i >= header.stepStart;
+            lineEl.setAttribute('font-size', isStep ? 11 : 12.5);
+            lineEl.setAttribute('font-weight', i === 0 ? 'bold' : 'normal');
+            lineEl.setAttribute('fill', i === 0 ? '#e65100' : (isStep ? '#555555' : '#212121'));
+            lineEl.textContent = line;
+            exportSvg.appendChild(lineEl);
+        });
 
         var dateEl = document.createElementNS('http://www.w3.org/2000/svg', 'text');
         dateEl.setAttribute('x', padding);
@@ -617,6 +724,7 @@
             state.links = [];
             state.currentPersonId = id;
             state.currentSulaleId = null;
+            clearRelationshipHighlight();
             mergeGraph(dto);
             resetExpandButtons();
 
@@ -654,6 +762,7 @@
             state.links = [];
             state.currentPersonId = null;
             state.currentSulaleId = sulaleId;
+            clearRelationshipHighlight();
             mergeGraph(dto);
             disableExpandButtons();
 
@@ -675,6 +784,146 @@
             fitToView(true);
         } finally {
             setLoading(false);
+        }
+    }
+
+    function setRelationshipInputs(data) {
+        var p1 = document.getElementById('relPerson1');
+        var p1Id = document.getElementById('relPerson1Id');
+        var p2 = document.getElementById('relPerson2');
+        var p2Id = document.getElementById('relPerson2Id');
+        if (p1 && data.person1Name) { p1.value = data.person1Name; p1Id.value = data.person1Id; }
+        if (p2 && data.person2Name) { p2.value = data.person2Name; p2Id.value = data.person2Id; }
+    }
+
+    async function loadRelationship(aId, bId, pushUrl) {
+        var resultEl = document.getElementById('relResult');
+        setLoading(true);
+        try {
+            var res = await fetch('/api/familytree/relationship?a=' + aId + '&b=' + bId);
+            if (!res.ok) {
+                alert('Akrabalık bağı sorgulanamadı.');
+                return;
+            }
+            var data = await res.json();
+
+            resultEl.classList.remove('d-none');
+            setRelationshipInputs(data);
+
+            if (pushUrl) {
+                history.pushState(null, '', '/FamilyTree?rel1=' + aId + '&rel2=' + bId);
+            }
+
+            if (!data.related) {
+                var warningHtml = '<div class="alert alert-warning mb-0 py-2">' + escapeHtml(data.summary) + '</div>';
+                if (state.nodesById.size === 0) {
+                    // Harita boşsa 1. kişinin temel ağacını göster ki sayfa boş kalmasın.
+                    await loadBaseTree(aId, false);
+                } else {
+                    render();
+                }
+                clearRelationshipHighlight();
+                resultEl.classList.remove('d-none');
+                resultEl.innerHTML = warningHtml;
+                return;
+            }
+
+            state.nodesById = new Map();
+            state.links = [];
+            state.currentPersonId = null;
+            state.currentSulaleId = null;
+            mergeGraph(data.graph);
+            disableExpandButtons();
+
+            var sulaleSelectEl = document.getElementById('sulaleSelect');
+            if (sulaleSelectEl) {
+                sulaleSelectEl.value = '';
+            }
+
+            document.getElementById('treeTitle').textContent = 'Soy Ağacı - Akrabalık Bağı';
+
+            state.relPaths = data.paths || [];
+            state.relLinkParams = { a: aId, b: bId };
+            selectRelationshipPath(0, true);
+
+            document.getElementById('relClearBtn').classList.remove('d-none');
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    function applyPathHighlight(personIds) {
+        state.pathNodeIds = new Set(personIds);
+        state.pathEndpointIds = new Set();
+        if (personIds.length > 0) {
+            state.pathEndpointIds.add(personIds[0]);
+            state.pathEndpointIds.add(personIds[personIds.length - 1]);
+        }
+        state.pathEdgeKeys = new Set();
+        for (var i = 0; i < personIds.length - 1; i++) {
+            state.pathEdgeKeys.add(edgeKey(personIds[i], personIds[i + 1]));
+        }
+    }
+
+    function selectRelationshipPath(idx, doFit) {
+        var paths = state.relPaths || [];
+        if (paths.length === 0) {
+            return;
+        }
+
+        idx = Math.max(0, Math.min(idx, paths.length - 1));
+        state.relSelectedPath = idx;
+        var path = paths[idx];
+
+        applyPathHighlight(path.personIds || []);
+
+        var resultEl = document.getElementById('relResult');
+        var stepsHtml = (path.steps || []).map(function (s) {
+            return '<li>' + escapeHtml(s.fromName) + ' → <strong>' + escapeHtml(s.toName) + '</strong>: ' + escapeHtml(s.relation) + '</li>';
+        }).join('');
+
+        var tabsHtml = '';
+        if (paths.length > 1) {
+            tabsHtml = '<div class="btn-group btn-group-sm mb-2 flex-wrap" role="group" aria-label="Akrabalık yolları">' +
+                paths.map(function (p, i) {
+                    return '<button type="button" class="btn ' + (i === idx ? 'btn-warning' : 'btn-outline-warning') +
+                        '" data-rel-path="' + i + '">' + (i + 1) + '. yol · ' + escapeHtml(p.kind) + ' (' + p.length + ' adım)</button>';
+                }).join('') +
+                '</div>';
+        }
+
+        resultEl.classList.remove('d-none');
+        resultEl.innerHTML =
+            tabsHtml +
+            '<div class="fw-bold mb-1">' + escapeHtml(path.summary) + '</div>' +
+            (stepsHtml ? '<ol class="mb-1 ps-3">' + stepsHtml + '</ol>' : '') +
+            '<div class="text-muted">' +
+            (paths.length > 1 ? 'Bu iki kişi arasında <strong>' + paths.length + ' farklı yol</strong> bulundu. ' : '') +
+            'Seçili yol haritada <span style="color:#e65100;font-weight:600;">turuncu</span> ile vurgulandı. Bir karta tıklayınca o kişinin ağacına geçebilirsiniz.</div>' +
+            '<button type="button" id="relCopyLinkBtn" class="btn btn-outline-secondary btn-sm mt-1">Paylaşılabilir bağlantıyı kopyala</button>';
+
+        resultEl.querySelectorAll('[data-rel-path]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                selectRelationshipPath(parseInt(btn.dataset.relPath, 10), false);
+            });
+        });
+
+        var copyBtn = document.getElementById('relCopyLinkBtn');
+        copyBtn.addEventListener('click', function () {
+            var lp = state.relLinkParams || {};
+            var url = location.origin + '/FamilyTree?rel1=' + lp.a + '&rel2=' + lp.b;
+            navigator.clipboard.writeText(url).then(function () {
+                copyBtn.textContent = 'Bağlantı kopyalandı ✓';
+                setTimeout(function () { copyBtn.textContent = 'Paylaşılabilir bağlantıyı kopyala'; }, 2000);
+            }).catch(function () {
+                window.prompt('Bağlantıyı kopyalayın:', url);
+            });
+        });
+
+        resizeSvg();
+        render();
+        if (doFit) {
+            fitToView(true);
         }
     }
 
@@ -746,43 +995,96 @@
         }
     });
 
+    function attachSearch(input, results, onPick) {
+        var timer;
+        input.addEventListener('input', function () {
+            clearTimeout(timer);
+            var q = input.value.trim();
+            if (q.length < 2) {
+                results.innerHTML = '';
+                return;
+            }
+            timer = setTimeout(function () {
+                fetch('/api/person/search?q=' + encodeURIComponent(q))
+                    .then(function (r) { return r.json(); })
+                    .then(function (data) {
+                        results.innerHTML = '';
+                        data.forEach(function (item) {
+                            var el = document.createElement('button');
+                            el.type = 'button';
+                            el.className = 'list-group-item list-group-item-action';
+                            el.textContent = item.adSoyad + (item.dogumYili ? ' (' + item.dogumYili + ')' : '') + (item.tcKimlikNoMasked ? ' — TC: ' + item.tcKimlikNoMasked : '');
+                            el.addEventListener('click', function () {
+                                results.innerHTML = '';
+                                onPick(item);
+                            });
+                            results.appendChild(el);
+                        });
+                    });
+            }, 250);
+        });
+        document.addEventListener('click', function (e) {
+            if (e.target !== input) {
+                results.innerHTML = '';
+            }
+        });
+    }
+
     var searchInput = document.getElementById('treeSearch');
-    var searchResults = document.getElementById('treeSearchResults');
-    var searchTimeout;
-    searchInput.addEventListener('input', function () {
-        clearTimeout(searchTimeout);
-        var q = searchInput.value.trim();
-        if (q.length < 2) {
-            searchResults.innerHTML = '';
+    attachSearch(searchInput, document.getElementById('treeSearchResults'), function (item) {
+        searchInput.value = '';
+        loadBaseTree(item.id, true);
+    });
+
+    var relP1 = document.getElementById('relPerson1');
+    var relP1Id = document.getElementById('relPerson1Id');
+    var relP2 = document.getElementById('relPerson2');
+    var relP2Id = document.getElementById('relPerson2Id');
+
+    attachSearch(relP1, document.getElementById('relPerson1Results'), function (item) {
+        relP1.value = item.adSoyad;
+        relP1Id.value = item.id;
+    });
+    attachSearch(relP2, document.getElementById('relPerson2Results'), function (item) {
+        relP2.value = item.adSoyad;
+        relP2Id.value = item.id;
+    });
+
+    relP1.addEventListener('input', function () { relP1Id.value = ''; });
+    relP2.addEventListener('input', function () { relP2Id.value = ''; });
+
+    document.getElementById('relFindBtn').addEventListener('click', function () {
+        var a = parseInt(relP1Id.value, 10);
+        var b = parseInt(relP2Id.value, 10);
+        if (isNaN(a) || isNaN(b)) {
+            alert('Lütfen listeden iki kişi de seçin.');
             return;
         }
-        searchTimeout = setTimeout(function () {
-            fetch('/api/person/search?q=' + encodeURIComponent(q))
-                .then(function (r) { return r.json(); })
-                .then(function (data) {
-                    searchResults.innerHTML = '';
-                    data.forEach(function (item) {
-                        var el = document.createElement('button');
-                        el.type = 'button';
-                        el.className = 'list-group-item list-group-item-action';
-                        el.textContent = item.adSoyad + (item.dogumYili ? ' (' + item.dogumYili + ')' : '') + (item.tcKimlikNoMasked ? ' — TC: ' + item.tcKimlikNoMasked : '');
-                        el.addEventListener('click', function () {
-                            searchInput.value = '';
-                            searchResults.innerHTML = '';
-                            loadBaseTree(item.id, true);
-                        });
-                        searchResults.appendChild(el);
-                    });
-                });
-        }, 250);
-    });
-    document.addEventListener('click', function (e) {
-        if (e.target !== searchInput) {
-            searchResults.innerHTML = '';
+        if (a === b) {
+            alert('Lütfen farklı iki kişi seçin.');
+            return;
         }
+        loadRelationship(a, b, true);
+    });
+
+    document.getElementById('relClearBtn').addEventListener('click', function () {
+        relP1.value = '';
+        relP1Id.value = '';
+        relP2.value = '';
+        relP2Id.value = '';
+        clearRelationshipHighlight();
+        window.location.href = '/FamilyTree';
     });
 
     window.addEventListener('popstate', function () {
+        var relParams = new URLSearchParams(location.search);
+        var pr1 = parseInt(relParams.get('rel1'), 10);
+        var pr2 = parseInt(relParams.get('rel2'), 10);
+        if (!isNaN(pr1) && !isNaN(pr2)) {
+            loadRelationship(pr1, pr2, false);
+            return;
+        }
+
         var sulaleMatch = /\/FamilyTree\/Sulale\/(\d+)/i.exec(location.pathname);
         if (sulaleMatch) {
             loadSulaleTree(parseInt(sulaleMatch[1], 10), false);
@@ -803,8 +1105,12 @@
 
     var initialId = parseInt(app.dataset.personId, 10);
     var initialSulaleId = parseInt(app.dataset.sulaleId, 10);
+    var initialRel1 = parseInt(app.dataset.rel1, 10);
+    var initialRel2 = parseInt(app.dataset.rel2, 10);
     resizeSvg();
-    if (!isNaN(initialSulaleId)) {
+    if (!isNaN(initialRel1) && !isNaN(initialRel2)) {
+        loadRelationship(initialRel1, initialRel2, false);
+    } else if (!isNaN(initialSulaleId)) {
         loadSulaleTree(initialSulaleId, false);
     } else if (!isNaN(initialId)) {
         loadBaseTree(initialId, false);

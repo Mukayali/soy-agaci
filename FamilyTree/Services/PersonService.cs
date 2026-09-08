@@ -532,6 +532,110 @@ public class PersonService : IPersonService
         return (true, null);
     }
 
+    public async Task<List<ParentSpouseSuggestionViewModel>> GetParentSpouseSuggestionsAsync()
+    {
+        var pairs = await GetUnlinkedParentPairsAsync();
+        if (pairs.Count == 0)
+        {
+            return new List<ParentSpouseSuggestionViewModel>();
+        }
+
+        var personIds = pairs.SelectMany(p => new[] { p.AnneId, p.BabaId }).Distinct().ToList();
+        var names = await _context.Persons
+            .Where(p => personIds.Contains(p.Id))
+            .Select(p => new { p.Id, Ad = p.Ad + " " + p.Soyad })
+            .ToDictionaryAsync(p => p.Id, p => p.Ad);
+
+        return pairs
+            .Where(p => names.ContainsKey(p.AnneId) && names.ContainsKey(p.BabaId))
+            .Select(p => new ParentSpouseSuggestionViewModel
+            {
+                AnneId = p.AnneId,
+                AnneAdSoyad = names[p.AnneId],
+                BabaId = p.BabaId,
+                BabaAdSoyad = names[p.BabaId],
+                OrtakCocukSayisi = p.OrtakCocukSayisi,
+            })
+            .OrderByDescending(p => p.OrtakCocukSayisi)
+            .ThenBy(p => p.BabaAdSoyad)
+            .ToList();
+    }
+
+    public async Task<int> AutoLinkSpousesFromParentsAsync()
+    {
+        var pairs = await GetUnlinkedParentPairsAsync();
+        if (pairs.Count == 0)
+        {
+            return 0;
+        }
+
+        // Silinmiş bir kişiye referans veren çiftleri atla (global query filtresi zaten
+        // silinmişleri elemekte, ancak anne/baba id'si silinmiş kişiyi işaret edebilir).
+        var personIds = pairs.SelectMany(p => new[] { p.AnneId, p.BabaId }).Distinct().ToList();
+        var existingPersonIds = await _context.Persons
+            .Where(p => personIds.Contains(p.Id))
+            .Select(p => p.Id)
+            .ToListAsync();
+        var valid = existingPersonIds.ToHashSet();
+
+        var created = 0;
+        foreach (var pair in pairs)
+        {
+            if (!valid.Contains(pair.AnneId) || !valid.Contains(pair.BabaId))
+            {
+                continue;
+            }
+
+            _context.SpouseRelationships.Add(new SpouseRelationship
+            {
+                Person1Id = pair.BabaId,
+                Person2Id = pair.AnneId,
+            });
+            created++;
+        }
+
+        if (created > 0)
+        {
+            await _context.SaveChangesAsync();
+        }
+
+        return created;
+    }
+
+    /// <summary>
+    /// Ortak çocuğu olan (AnneId ve BabaId dolu) ve aralarında henüz eş ilişkisi bulunmayan
+    /// anne-baba çiftlerini, ortak çocuk sayısıyla birlikte döndürür.
+    /// </summary>
+    private async Task<List<(int AnneId, int BabaId, int OrtakCocukSayisi)>> GetUnlinkedParentPairsAsync()
+    {
+        var coParentPairs = await _context.Persons
+            .Where(p => p.AnneId != null && p.BabaId != null)
+            .GroupBy(p => new { AnneId = p.AnneId!.Value, BabaId = p.BabaId!.Value })
+            .Select(g => new { g.Key.AnneId, g.Key.BabaId, Count = g.Count() })
+            .ToListAsync();
+
+        if (coParentPairs.Count == 0)
+        {
+            return new List<(int, int, int)>();
+        }
+
+        var existing = await _context.SpouseRelationships
+            .Select(sr => new { sr.Person1Id, sr.Person2Id })
+            .ToListAsync();
+
+        var linked = new HashSet<(int, int)>();
+        foreach (var sr in existing)
+        {
+            linked.Add((sr.Person1Id, sr.Person2Id));
+            linked.Add((sr.Person2Id, sr.Person1Id));
+        }
+
+        return coParentPairs
+            .Where(p => !linked.Contains((p.AnneId, p.BabaId)))
+            .Select(p => (p.AnneId, p.BabaId, p.Count))
+            .ToList();
+    }
+
     private async Task<(bool IsValid, string? ErrorMessage)> ValidateRelationshipAsync(int? personId, int? anneId, int? babaId)
     {
         if (anneId.HasValue && babaId.HasValue && anneId.Value == babaId.Value)

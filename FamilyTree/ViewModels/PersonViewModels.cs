@@ -197,3 +197,15 @@ public class PersonCommentViewModel
     public string Yorum { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
 }
+
+/// <summary>
+/// Çocukların anne/baba alanlarından türetilen, henüz kayıtlı bir eş ilişkisi bulunmayan çift önerisi.
+/// </summary>
+public class ParentSpouseSuggestionViewModel
+{
+    public int AnneId { get; set; }
+    public string AnneAdSoyad { get; set; } = string.Empty;
+    public int BabaId { get; set; }
+    public string BabaAdSoyad { get; set; } = string.Empty;
+    public int OrtakCocukSayisi { get; set; }
+}

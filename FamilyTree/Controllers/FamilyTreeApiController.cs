@@ -60,6 +60,17 @@ public class FamilyTreeApiController : ControllerBase
         return Ok(await _familyTreeService.GetCousinsAsync(id));
     }
 
+    [HttpGet("relationship")]
+    public async Task<IActionResult> GetRelationship([FromQuery] int a, [FromQuery] int b)
+    {
+        if (a == 0 || b == 0)
+        {
+            return BadRequest();
+        }
+
+        return Ok(await _familyTreeService.FindRelationshipAsync(a, b));
+    }
+
     [HttpGet("sulale/{sulaleId:int}")]
     public async Task<IActionResult> GetBySulale(int sulaleId)
     {

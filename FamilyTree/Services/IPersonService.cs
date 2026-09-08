@@ -23,4 +23,16 @@ public interface IPersonService
     Task<List<PersonListItemViewModel>> GetDeletedAsync();
 
     Task<(bool Success, string? ErrorMessage)> RestoreAsync(int id);
+
+    /// <summary>
+    /// Çocukların anne/baba alanlarına bakarak, aralarında henüz kayıtlı bir eş ilişkisi
+    /// bulunmayan anne-baba çiftlerini önerir.
+    /// </summary>
+    Task<List<ParentSpouseSuggestionViewModel>> GetParentSpouseSuggestionsAsync();
+
+    /// <summary>
+    /// <see cref="GetParentSpouseSuggestionsAsync"/> ile bulunan tüm anne-baba çiftleri için
+    /// eş ilişkisi oluşturur. Oluşturulan ilişki sayısını döndürür.
+    /// </summary>
+    Task<int> AutoLinkSpousesFromParentsAsync();
 }
