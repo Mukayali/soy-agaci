@@ -25,6 +25,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<PersonSulale> PersonSulaleler => Set<PersonSulale>();
 
+    public DbSet<AdCinsiyet> AdCinsiyetler => Set<AdCinsiyet>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -118,6 +120,19 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         {
             entity.HasIndex(a => a.Tarih);
             entity.HasIndex(a => a.UserId);
+        });
+
+        modelBuilder.Entity<AdCinsiyet>(entity =>
+        {
+            entity.HasIndex(a => a.Ad).IsUnique();
+
+            // Ada göre eşleştirme bellekte Türkçe kültürüyle yapılsa da, kolonu Person.Ad ile
+            // aynı collation'da tutmak tutarlıdır (bkz. Person.Ad yapılandırması).
+            entity.Property(a => a.Ad).UseCollation("utf8mb4_turkish_ci");
+
+            entity.Property(a => a.Cinsiyet)
+                .HasConversion<string>()
+                .HasMaxLength(10);
         });
 
         modelBuilder.Entity<PersonComment>(entity =>

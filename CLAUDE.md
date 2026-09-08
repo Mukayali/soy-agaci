@@ -1989,6 +1989,44 @@ katmanlandığı görsel olarak doğrulandı.
 
 ---
 
+# 51.6. Cinsiyet Eşleme (Ada Göre Referans Listesi)
+
+**Durum: Uygulandı.** Yönetim → "Cinsiyet Eşleme" (`/Cinsiyet`, Admin-only) sayfası,
+`Person.Cinsiyet` alanını toplu doldurmak için üç adım sunar:
+
+1. **Referans listesi yükleme** (`AdCinsiyetler` tablosu — `AddAdCinsiyet` migration'ı):
+   iki sütunlu (`Ad`, `Cinsiyet`) bir `.xlsx` veya `.csv` dosyası. Başlık satırı tanınır
+   (`ad`/`isim`/`name`, `cinsiyet`/`gender`); tanınmazsa ilk iki sütun ad/cinsiyet kabul
+   edilir. Yükleme **upsert**'tir: aynı ad varsa cinsiyeti güncellenir. `Ad`, Türkçe
+   kültürüyle BÜYÜK harfe normalize edilip iç boşluklar tekleştirilerek saklanır
+   (`Ad` üzerinde benzersiz index). "Listeyi Temizle" butonu tabloyu boşaltır (kişilerin
+   mevcut cinsiyet bilgisi etkilenmez).
+2. **"Adlara Göre Eşle"** butonu (`MatchByNamesAsync`): referansı belleğe alır
+   (`Dictionary<string,Gender>`), varsayılan olarak yalnızca `Cinsiyet == null` kişileri
+   gezer; her kişinin adını **önce tam**, bulunamazsa **ilk kelimesiyle** referansta arar
+   (ör. "HÜSEYİN HABİB" → "HÜSEYİN"). "Cinsiyeti zaten girilmiş kişileri de güncelle"
+   onay kutusu işaretlenirse tüm kişiler taranır. Sonuç: güncellenen / zaten doğru /
+   eşleşmeyen sayıları.
+3. **"Cinsiyeti Girilmemiş Kişileri Listele"** (`?eksik=true`): `Cinsiyet == null` kişileri
+   sayfalı (100/sayfa, pencereli pagination) listeler; her satırda Erkek/Kadın radyo grubu,
+   "Görünenleri tümü Erkek/Kadın/Temizle" JS kısayolları ve tek "Seçilenleri Kaydet"
+   butonu. Form `genders[<personId>]=Erkek|Kadin` alanlarını `Dictionary<int,string>`
+   olarak bind eder; yalnızca seçim yapılan satırlar `BulkSetGendersAsync` ile güncellenir.
+
+**Excel okuma — ek bağımlılık yok:** `.xlsx` `GenderReferenceService.ReadXlsxRows` içinde
+`ZipArchive` + `XDocument` ile elle ayrıştırılır (proje CSV ve GEDCOM'u da elle ayrıştırıyor;
+ClosedXML/OpenXml SDK eklenmedi). Paylaşımlı dize tablosu (`xl/sharedStrings.xml`),
+`inlineStr` hücreleri ve hücre referansından (`B3`) sütun indeksi desteklenir; ilk çalışma
+sayfası okunur.
+
+Gerçek veriyle (headless tarayıcı, ardından test verisi DB'den geri alındı) doğrulandı:
+15 satırlık `.xlsx` yüklemede 13 eklendi + 1 mükerrer birleşti + 1 geçersiz cinsiyet
+atlandı (uyarı gösterildi); `.csv` yüklemede upsert; "Adlara Göre Eşle" 22 672 boş kişiden
+1095'ini isim (ilk-kelime dahil) eşleşmesiyle güncelledi; eksik listesinde toplu 3 kişi
+Erkek/Kadın seçilerek kaydedildi.
+
+---
+
 # 52. Öncelikli Geliştirme Prensibi
 
 Öncelik:

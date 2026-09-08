@@ -1,0 +1,234 @@
+@model CinsiyetYonetimViewModel
+@{
+    ViewData["Title"] = "Cinsiyet Eşleme";
+}
+
+<h2 class="mb-3">Cinsiyet Eşleme</h2>
+
+@if (TempData["ImportWarnings"] is string importWarnings)
+{
+    <div class="alert alert-warning">
+        <strong>Uyarılar:</strong>
+        <pre class="mb-0" style="white-space:pre-wrap;">@importWarnings</pre>
+    </div>
+}
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">1. Referans Listesi (Excel / CSV)</h5>
+                <p class="text-muted small">
+                    İki sütunlu bir dosya yükleyin: <code>Ad</code> ve <code>Cinsiyet</code>
+                    (<code>Erkek</code> / <code>Kadın</code>). Başlık satırı olması şart değildir;
+                    yoksa ilk iki sütun ad ve cinsiyet kabul edilir. Aynı ad tekrar yüklenirse
+                    cinsiyeti güncellenir.
+                </p>
+
+                <div class="alert @(Model.ReferansSayisi > 0 ? "alert-success" : "alert-secondary") py-2">
+                    Listede şu an <strong>@Model.ReferansSayisi</strong> ad kaydı var.
+                </div>
+
+                <form asp-action="Upload" method="post" enctype="multipart/form-data" class="mb-2">
+                    <div class="input-group">
+                        <input type="file" name="file" class="form-control" accept=".xlsx,.csv" required />
+                        <button type="submit" class="btn btn-primary">Yükle</button>
+                    </div>
+                    <div class="form-text">.xlsx veya .csv — en fazla 5 MB.</div>
+                </form>
+
+                @if (Model.ReferansSayisi > 0)
+                {
+                    <form asp-action="Clear" method="post" class="mb-3"
+                          onsubmit="return confirm('Referans listesindeki tüm kayıtlar silinsin mi? (Kişilerin mevcut cinsiyet bilgileri etkilenmez.)');">
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Listeyi Temizle</button>
+                    </form>
+
+                    <details>
+                        <summary class="small text-muted">İlk @Model.ReferansOrnek.Count kayıt</summary>
+                        <ul class="list-unstyled small mb-0 mt-2" style="max-height:220px;overflow:auto;">
+                            @foreach (var r in Model.ReferansOrnek)
+                            {
+                                <li>@r.Ad — <span class="text-muted">@(r.Cinsiyet == FamilyTree.Models.Gender.Erkek ? "Erkek" : "Kadın")</span></li>
+                            }
+                        </ul>
+                    </details>
+                }
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-6">
+        <div class="card h-100">
+            <div class="card-body">
+                <h5 class="card-title">2. Adlara Göre Cinsiyetleri Eşle</h5>
+                <p class="text-muted small">
+                    Referans listesine göre kişilerin cinsiyetini adlarıyla eşleştirerek doldurur.
+                    Kişinin tam adı bulunamazsa adının ilk kelimesiyle de denenir.
+                </p>
+
+                <form asp-action="Match" method="post"
+                      onsubmit="return confirm('Kişilerin cinsiyeti referans listesine göre güncellenecek. Devam edilsin mi?');">
+                    <div class="form-check mb-2">
+                        <input class="form-check-input" type="checkbox" name="overwriteExisting" value="true" id="overwriteExisting" />
+                        <label class="form-check-label small" for="overwriteExisting">
+                            Cinsiyeti zaten girilmiş kişileri de referansa göre güncelle
+                        </label>
+                    </div>
+                    <button type="submit" class="btn btn-primary" @(Model.ReferansSayisi == 0 ? "disabled" : "")>
+                        Adlara Göre Eşle
+                    </button>
+                    @if (Model.ReferansSayisi == 0)
+                    {
+                        <div class="form-text text-danger">Önce referans listesi yükleyin.</div>
+                    }
+                </form>
+
+                <hr />
+
+                <h5 class="card-title">3. Cinsiyeti Girilmemiş Kişiler</h5>
+                <p class="text-muted small">
+                    Cinsiyeti boş olan kişileri listeleyip her biri için Erkek/Kadın seçerek
+                    tek seferde güncelleyin.
+                </p>
+                @if (!Model.EksikleriGoster)
+                {
+                    <a asp-action="Index" asp-route-eksik="true" class="btn btn-outline-primary">
+                        Cinsiyeti Girilmemiş Kişileri Listele
+                    </a>
+                }
+                else
+                {
+                    <a asp-action="Index" class="btn btn-sm btn-outline-secondary">Listeyi Gizle</a>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (Model.EksikleriGoster)
+{
+    <div class="card mt-4">
+        <div class="card-body">
+            <div class="d-flex flex-wrap justify-content-between align-items-center mb-2">
+                <h5 class="mb-0">Cinsiyeti Girilmemiş Kişiler <span class="text-muted fs-6">(@Model.EksikToplam kişi)</span></h5>
+                @if (Model.EksikToplam > 0)
+                {
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-secondary" id="setAllErkek">Görünenleri tümü Erkek</button>
+                        <button type="button" class="btn btn-outline-secondary" id="setAllKadin">Görünenleri tümü Kadın</button>
+                        <button type="button" class="btn btn-outline-secondary" id="clearAll">Temizle</button>
+                    </div>
+                }
+            </div>
+
+            @if (Model.EksikToplam == 0)
+            {
+                <p class="text-muted mb-0">Cinsiyeti girilmemiş kişi kalmadı.</p>
+            }
+            else
+            {
+                <form asp-action="BulkUpdateMissing" method="post">
+                    <input type="hidden" name="page" value="@Model.SayfaNo" />
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Ad Soyad</th>
+                                    <th>Doğum</th>
+                                    <th>Anne</th>
+                                    <th>Baba</th>
+                                    <th style="width:220px;">Cinsiyet</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var k in Model.EksikKisiler)
+                                {
+                                    <tr>
+                                        <td><a asp-controller="Person" asp-action="Details" asp-route-id="@k.Id" target="_blank">@k.AdSoyad</a></td>
+                                        <td>@(k.DogumYili?.ToString() ?? "-")</td>
+                                        <td class="small text-muted">@(k.AnneAdSoyad ?? "-")</td>
+                                        <td class="small text-muted">@(k.BabaAdSoyad ?? "-")</td>
+                                        <td>
+                                            <div class="btn-group btn-group-sm" role="group">
+                                                <input type="radio" class="btn-check gender-radio" name="genders[@k.Id]" value="Erkek" id="e_@k.Id" autocomplete="off" />
+                                                <label class="btn btn-outline-primary" for="e_@k.Id">Erkek</label>
+                                                <input type="radio" class="btn-check gender-radio" name="genders[@k.Id]" value="Kadin" id="k_@k.Id" autocomplete="off" />
+                                                <label class="btn btn-outline-danger" for="k_@k.Id">Kadın</label>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="d-flex flex-wrap justify-content-between align-items-center">
+                        <button type="submit" class="btn btn-primary">Seçilenleri Kaydet</button>
+
+                        @if (Model.ToplamSayfa > 1)
+                        {
+                            var win = 2;
+                            var from = Math.Max(1, Model.SayfaNo - win);
+                            var to = Math.Min(Model.ToplamSayfa, Model.SayfaNo + win);
+                            <nav aria-label="Sayfalar" class="d-flex align-items-center gap-2">
+                                <span class="small text-muted">Sayfa @Model.SayfaNo / @Model.ToplamSayfa</span>
+                                <ul class="pagination pagination-sm mb-0">
+                                    @if (Model.SayfaNo > 1)
+                                    {
+                                        <li class="page-item"><a class="page-link" asp-action="Index" asp-route-eksik="true" asp-route-page="@(Model.SayfaNo - 1)">‹</a></li>
+                                    }
+                                    @if (from > 1)
+                                    {
+                                        <li class="page-item"><a class="page-link" asp-action="Index" asp-route-eksik="true" asp-route-page="1">1</a></li>
+                                        @if (from > 2)
+                                        {
+                                            <li class="page-item disabled"><span class="page-link">…</span></li>
+                                        }
+                                    }
+                                    @for (var p = from; p <= to; p++)
+                                    {
+                                        <li class="page-item @(p == Model.SayfaNo ? "active" : "")">
+                                            <a class="page-link" asp-action="Index" asp-route-eksik="true" asp-route-page="@p">@p</a>
+                                        </li>
+                                    }
+                                    @if (to < Model.ToplamSayfa)
+                                    {
+                                        @if (to < Model.ToplamSayfa - 1)
+                                        {
+                                            <li class="page-item disabled"><span class="page-link">…</span></li>
+                                        }
+                                        <li class="page-item"><a class="page-link" asp-action="Index" asp-route-eksik="true" asp-route-page="@Model.ToplamSayfa">@Model.ToplamSayfa</a></li>
+                                    }
+                                    @if (Model.SayfaNo < Model.ToplamSayfa)
+                                    {
+                                        <li class="page-item"><a class="page-link" asp-action="Index" asp-route-eksik="true" asp-route-page="@(Model.SayfaNo + 1)">›</a></li>
+                                    }
+                                </ul>
+                            </nav>
+                        }
+                    </div>
+                    <div class="form-text">Yalnızca bir seçim yaptığınız satırlar güncellenir. Sayfa değiştirmeden önce bu sayfadaki seçimlerinizi kaydedin.</div>
+                </form>
+            }
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+        (function () {
+            function setAll(value) {
+                document.querySelectorAll('.gender-radio').forEach(function (radio) {
+                    radio.checked = value != null && radio.value === value;
+                });
+            }
+            var e = document.getElementById('setAllErkek');
+            var k = document.getElementById('setAllKadin');
+            var c = document.getElementById('clearAll');
+            if (e) e.addEventListener('click', function () { setAll('Erkek'); });
+            if (k) k.addEventListener('click', function () { setAll('Kadin'); });
+            if (c) c.addEventListener('click', function () { setAll(null); });
+        })();
+    </script>
+}
