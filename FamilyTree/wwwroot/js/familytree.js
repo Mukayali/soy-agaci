@@ -89,6 +89,7 @@
 
     var EXPAND_BUTTON_IDS = [
         'showGrandparentsBtn',
+        'ancestorsMenuBtn',
         'showGrandchildrenBtn',
         'showNephewsBtn',
         'showAuntsUnclesBtn',
@@ -943,6 +944,29 @@
         }
     }
 
+    async function loadAncestors(depth) {
+        if (!state.currentPersonId) return;
+        setLoading(true);
+        try {
+            var beforeCount = state.nodesById.size;
+            var res = await fetch('/api/familytree/' + state.currentPersonId + '/ancestors?depth=' + depth);
+            var dto = await res.json();
+            mergeGraph(dto);
+            // Atalar getirildiğinde dede/nine de dahil olur.
+            document.getElementById('showGrandparentsBtn').disabled = true;
+            resizeSvg();
+            render();
+            fitToView(true);
+
+            if (state.nodesById.size === beforeCount) {
+                // Yeni ata bulunamadı (kayıtların en tepesine ulaşıldı).
+                document.getElementById('ancestorsMenuBtn').disabled = true;
+            }
+        } finally {
+            setLoading(false);
+        }
+    }
+
     document.getElementById('zoomInBtn').addEventListener('click', function () {
         svg.transition().duration(200).call(zoomBehavior.scaleBy, 1.3);
     });
@@ -970,6 +994,11 @@
 
     document.getElementById('showGrandparentsBtn').addEventListener('click', function () {
         expand('grandparents', 'grandparents', 'showGrandparentsBtn');
+    });
+    document.querySelectorAll('[data-ancestor-depth]').forEach(function (item) {
+        item.addEventListener('click', function () {
+            loadAncestors(parseInt(item.dataset.ancestorDepth, 10));
+        });
     });
     document.getElementById('showGrandchildrenBtn').addEventListener('click', function () {
         expand('grandchildren', 'grandchildren', 'showGrandchildrenBtn');

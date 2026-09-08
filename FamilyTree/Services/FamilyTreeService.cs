@@ -194,6 +194,96 @@ public class FamilyTreeService : IFamilyTreeService
         return graph;
     }
 
+    public async Task<FamilyTreeGraphDto> GetAncestorsAsync(int personId, int maxDepth)
+    {
+        var graph = new FamilyTreeGraphDto();
+        maxDepth = Math.Clamp(maxDepth, 1, 20);
+
+        var personExists = await _context.Persons.AsNoTracking().AnyAsync(p => p.Id == personId);
+        if (!personExists)
+        {
+            return graph;
+        }
+
+        var addedNodeIds = new HashSet<int>();
+        var frontier = new List<int> { personId };
+
+        for (var depth = 1; depth <= maxDepth && frontier.Count > 0; depth++)
+        {
+            var frontierPeople = await _context.Persons.AsNoTracking()
+                .Where(p => frontier.Contains(p.Id))
+                .Select(p => new { p.Id, p.AnneId, p.BabaId })
+                .ToListAsync();
+
+            var parentIds = frontierPeople
+                .SelectMany(p => new[] { p.AnneId, p.BabaId })
+                .Where(id => id.HasValue)
+                .Select(id => id!.Value)
+                .Distinct()
+                .ToList();
+
+            if (parentIds.Count == 0)
+            {
+                break;
+            }
+
+            var parents = await _context.Persons.AsNoTracking()
+                .Include(p => p.Photos)
+                .Where(p => parentIds.Contains(p.Id))
+                .ToListAsync();
+            var parentById = parents.ToDictionary(p => p.Id);
+
+            var nextFrontier = new List<int>();
+
+            foreach (var child in frontierPeople)
+            {
+                if (child.AnneId is int anneId && parentById.TryGetValue(anneId, out var anne))
+                {
+                    if (addedNodeIds.Add(anne.Id))
+                    {
+                        graph.Nodes.Add(ToNode(anne, -depth, AncestorRole(depth, isAnne: true)));
+                        nextFrontier.Add(anne.Id);
+                    }
+
+                    graph.Links.Add(new FamilyTreeLinkDto { Source = anne.Id, Target = child.Id, Relationship = "parent" });
+                }
+
+                if (child.BabaId is int babaId && parentById.TryGetValue(babaId, out var baba))
+                {
+                    if (addedNodeIds.Add(baba.Id))
+                    {
+                        graph.Nodes.Add(ToNode(baba, -depth, AncestorRole(depth, isAnne: false)));
+                        nextFrontier.Add(baba.Id);
+                    }
+
+                    graph.Links.Add(new FamilyTreeLinkDto { Source = baba.Id, Target = child.Id, Relationship = "parent" });
+                }
+            }
+
+            frontier = nextFrontier;
+        }
+
+        var spouseRelationships = await _context.SpouseRelationships.AsNoTracking()
+            .Where(sr => addedNodeIds.Contains(sr.Person1Id) && addedNodeIds.Contains(sr.Person2Id))
+            .ToListAsync();
+
+        foreach (var sr in spouseRelationships)
+        {
+            graph.Links.Add(new FamilyTreeLinkDto { Source = sr.Person1Id, Target = sr.Person2Id, Relationship = "spouse" });
+        }
+
+        DeduplicateNodes(graph);
+        return graph;
+    }
+
+    private static string AncestorRole(int depth, bool isAnne) => depth switch
+    {
+        1 => isAnne ? "Anne" : "Baba",
+        2 => isAnne ? "Nine" : "Dede",
+        3 => isAnne ? "Büyük Nine" : "Büyük Dede",
+        _ => $"{depth}. kuşak ata",
+    };
+
     public async Task<FamilyTreeGraphDto> GetGrandchildrenAsync(int personId)
     {
         var graph = new FamilyTreeGraphDto();

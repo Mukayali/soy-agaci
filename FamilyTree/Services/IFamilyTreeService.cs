@@ -12,6 +12,12 @@ public interface IFamilyTreeService
     /// <summary>Anne ve babanın anne/babalarını (büyükebeveynleri) döndürür.</summary>
     Task<FamilyTreeGraphDto> GetGrandparentsAsync(int personId);
 
+    /// <summary>
+    /// Seçilen kişinin, verilen nesil derinliğine kadar tüm atalarını (anne/baba zinciri) döndürür.
+    /// Kök kişi generation 0 kabul edilir; k. nesil ata generation -k'dedir.
+    /// </summary>
+    Task<FamilyTreeGraphDto> GetAncestorsAsync(int personId, int maxDepth);
+
     /// <summary>Çocukların çocuklarını (torunları) döndürür.</summary>
     Task<FamilyTreeGraphDto> GetGrandchildrenAsync(int personId);
 

@@ -1959,6 +1959,36 @@ ve farklı sayıda turuncu bağ içerdiği; kuzen örneğinde PNG başlığını
 
 ---
 
+# 51.5. Soy Ağacında Daha Eski Ataları Gösterme
+
+**Durum: Uygulandı.** Kişi merkezli soy ağacında "+ Dede ve Nineleri Göster" butonu artık
+bir **split-button açılır menü** taşır ("Büyük dede/nineler (3 nesil)", "4/5/6 nesil öncesine
+kadar", "Bulunabilen tüm atalar"). Seçilen derinliğe kadar tüm atalar (anne/baba zinciri)
+haritaya eklenir; her ata kartına tıklanınca o kişi merkez olur (mevcut davranış).
+
+* **Servis**: `IFamilyTreeService.GetAncestorsAsync(personId, maxDepth)` — kök kişiden
+  yukarı BFS (frontier bazlı, `maxDepth` 1–20 arası clamp, `HashSet` ile döngü koruması).
+  Kök generation 0, k. nesil ata generation −k. Rol etiketi: 1=Anne/Baba, 2=Nine/Dede,
+  3=Büyük Nine/Büyük Dede, ≥4="{k}. kuşak ata". Eklenen atalar arasındaki `SpouseRelationship`
+  kayıtları eş kenarı olarak eklenir. Bu, mevcut merkez-kişi uçlarının sabit generation
+  numaralarıyla (anne/baba −1, dede/nine −2) uyumludur; `mergeGraph` istemcide id ve
+  kenar-anahtarına göre yinelenenleri elediğinden temel ağaç + dede/nine + atalar üst üste
+  bindirilebilir.
+* **API**: `GET /api/familytree/{id}/ancestors?depth={n}` (varsayılan 4).
+* **İstemci** (`familytree.js` `loadAncestors`): seçilen derinlikle çağırır, `mergeGraph` +
+  `render` + `fitToView`; dede/nine dahil olduğundan "+ Dede ve Nineleri Göster" butonu
+  pasifleşir; yeni düğüm gelmezse (kayıtların tepesi) menü toggle'ı pasifleşir. Menü toggle'ı
+  `EXPAND_BUTTON_IDS`'e eklendiğinden Sülale/Akrabalık modunda diğer genişletme butonlarıyla
+  birlikte pasifleşir, `loadBaseTree` ile geri açılır.
+
+Gerçek veriyle (headless tarayıcı) doğrulandı: `depth=2/4/20` için generation aralıkları
+(−2, −4, −5), rol etiketleri (Nine/Dede/Büyük Nine/Büyük Dede/"4./5. kuşak ata"), ata
+çiftleri arası eş kenarları; menüden "5 nesil" seçilince düğüm sayısının 10 → 26'ya çıktığı,
+"Dede/Nine" butonunun pasifleştiği; 7 nesillik tam ağacın generation'a göre düzgün
+katmanlandığı görsel olarak doğrulandı.
+
+---
+
 # 52. Öncelikli Geliştirme Prensibi
 
 Öncelik:

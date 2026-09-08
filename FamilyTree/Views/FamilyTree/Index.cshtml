@@ -55,7 +55,21 @@ else
             </div>
 
             <div class="btn-group" role="group" aria-label="Genişlet">
-                <button type="button" id="showGrandparentsBtn" class="btn btn-outline-primary btn-sm">+ Dede ve Nineleri Göster</button>
+                <div class="btn-group" role="group">
+                    <button type="button" id="showGrandparentsBtn" class="btn btn-outline-primary btn-sm">+ Dede ve Nineleri Göster</button>
+                    <button type="button" id="ancestorsMenuBtn" class="btn btn-outline-primary btn-sm dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-expanded="false" title="Daha eski ataları göster">
+                        <span class="visually-hidden">Daha eski ataları göster</span>
+                    </button>
+                    <ul class="dropdown-menu" aria-labelledby="ancestorsMenuBtn">
+                        <li><h6 class="dropdown-header">Daha eski ataları göster</h6></li>
+                        <li><button class="dropdown-item" type="button" data-ancestor-depth="3">Büyük dede / nineler (3 nesil)</button></li>
+                        <li><button class="dropdown-item" type="button" data-ancestor-depth="4">4 nesil öncesine kadar</button></li>
+                        <li><button class="dropdown-item" type="button" data-ancestor-depth="5">5 nesil öncesine kadar</button></li>
+                        <li><button class="dropdown-item" type="button" data-ancestor-depth="6">6 nesil öncesine kadar</button></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><button class="dropdown-item" type="button" data-ancestor-depth="20">Bulunabilen tüm atalar</button></li>
+                    </ul>
+                </div>
                 <button type="button" id="showGrandchildrenBtn" class="btn btn-outline-primary btn-sm">+ Torunları Göster</button>
                 <button type="button" id="showNephewsBtn" class="btn btn-outline-primary btn-sm">+ Yeğenleri Göster</button>
                 <button type="button" id="showAuntsUnclesBtn" class="btn btn-outline-primary btn-sm">+ Amca/Dayı/Hala/Teyze Göster</button>

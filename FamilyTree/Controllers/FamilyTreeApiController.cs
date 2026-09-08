@@ -36,6 +36,12 @@ public class FamilyTreeApiController : ControllerBase
         return Ok(await _familyTreeService.GetGrandparentsAsync(id));
     }
 
+    [HttpGet("{id:int}/ancestors")]
+    public async Task<IActionResult> GetAncestors(int id, [FromQuery] int depth = 4)
+    {
+        return Ok(await _familyTreeService.GetAncestorsAsync(id, depth));
+    }
+
     [HttpGet("{id:int}/grandchildren")]
     public async Task<IActionResult> GetGrandchildren(int id)
     {
