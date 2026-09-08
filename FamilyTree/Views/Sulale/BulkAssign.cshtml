@@ -1,0 +1,118 @@
+@model BulkSulaleViewModel
+@{
+    ViewData["Title"] = "Toplu Sülale Tanımlama";
+}
+
+<h2 class="mb-3">Toplu Sülale Tanımlama</h2>
+<p class="text-muted">Kişi arayın, gelen listeden istediklerinizi işaretleyin ve seçtiğiniz sülaleye aktarın.</p>
+
+<form asp-action="BulkAssign" method="get" class="row g-2 mb-4">
+    <div class="col-sm-8 col-md-6">
+        <input type="search" name="q" value="@Model.Query" class="form-control" placeholder="Ad, soyad veya TC ara..." autofocus />
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-outline-success">Ara</button>
+    </div>
+</form>
+
+@if (Model.Searched)
+{
+    @if (Model.Sulaleler.Count == 0)
+    {
+        <div class="alert alert-warning">
+            Henüz tanımlı sülale yok.
+            <a asp-action="Create">Önce bir sülale oluşturun.</a>
+        </div>
+    }
+    else if (Model.Persons.Count == 0)
+    {
+        <p class="text-muted">"@Model.Query" için sonuç bulunamadı.</p>
+    }
+    else
+    {
+        <form asp-action="BulkAssign" method="post" asp-route-q="@Model.Query" asp-route-page="@Model.Page"
+              onsubmit="return confirm('Seçili kişiler bu sülaleye eklenecek. Devam edilsin mi?');">
+            <div class="row g-2 align-items-end mb-3">
+                <div class="col-sm-6 col-md-4">
+                    <label for="sulaleId" class="form-label">Hedef Sülale</label>
+                    <select name="sulaleId" id="sulaleId" class="form-select" required>
+                        <option value="">— Sülale seçin —</option>
+                        @foreach (var s in Model.Sulaleler)
+                        {
+                            <option value="@s.Id">@s.Ad</option>
+                        }
+                    </select>
+                </div>
+                <div class="col-auto">
+                    <button type="submit" class="btn btn-primary">Seçilenleri Aktar</button>
+                </div>
+            </div>
+
+            <table class="table table-sm table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th style="width:1%"><input type="checkbox" id="selectAll" aria-label="Tümünü seç" /></th>
+                        <th>Ad Soyad</th>
+                        <th>Doğum</th>
+                        <th>Ölüm</th>
+                        <th>Mevcut Sülaleler</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var p in Model.Persons)
+                    {
+                        <tr>
+                            <td><input type="checkbox" name="personIds" value="@p.Id" class="row-check" aria-label="Seç" /></td>
+                            <td>
+                                <a asp-controller="Person" asp-action="Details" asp-route-id="@p.Id">@p.AdSoyad</a>
+                            </td>
+                            <td class="text-nowrap">@(p.DogumTarihi?.ToString("dd.MM.yyyy") ?? "-")</td>
+                            <td class="text-nowrap">@(p.OlumTarihi?.ToString("dd.MM.yyyy") ?? "-")</td>
+                            <td>
+                                @if (p.Sulaleler.Count == 0)
+                                {
+                                    <span class="text-muted">-</span>
+                                }
+                                else
+                                {
+                                    @foreach (var s in p.Sulaleler)
+                                    {
+                                        <span class="badge bg-secondary me-1">@s.Ad</span>
+                                    }
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </form>
+
+        @if (Model.TotalPages > 1)
+        {
+            <nav>
+                <ul class="pagination">
+                    @for (var i = 1; i <= Model.TotalPages; i++)
+                    {
+                        <li class="page-item @(i == Model.Page ? "active" : "")">
+                            <a class="page-link" asp-action="BulkAssign" asp-route-q="@Model.Query" asp-route-page="@i">@i</a>
+                        </li>
+                    }
+                </ul>
+            </nav>
+        }
+
+        <p class="text-muted small">Toplam @Model.TotalCount sonuç. Seçim yalnızca bu sayfadaki kişiler için geçerlidir.</p>
+    }
+}
+
+@section Scripts {
+    <script>
+        (function () {
+            var selectAll = document.getElementById('selectAll');
+            if (!selectAll) return;
+            selectAll.addEventListener('change', function () {
+                document.querySelectorAll('.row-check').forEach(function (cb) { cb.checked = selectAll.checked; });
+            });
+        })();
+    </script>
+}

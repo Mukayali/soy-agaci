@@ -20,6 +20,26 @@ public class HomeController : Controller
 
     public async Task<IActionResult> Index()
     {
+        var today = DateTime.Today;
+
+        var doganlar = await _context.Persons
+            .AsNoTracking()
+            .Include(p => p.Photos.Where(ph => ph.IsPrimary))
+            .Where(p => p.DogumTarihi.HasValue
+                && p.DogumTarihi.Value.Month == today.Month
+                && p.DogumTarihi.Value.Day == today.Day)
+            .OrderBy(p => p.Ad).ThenBy(p => p.Soyad)
+            .ToListAsync();
+
+        var kaybettiklerimiz = await _context.Persons
+            .AsNoTracking()
+            .Include(p => p.Photos.Where(ph => ph.IsPrimary))
+            .Where(p => p.OlumTarihi.HasValue
+                && p.OlumTarihi.Value.Month == today.Month
+                && p.OlumTarihi.Value.Day == today.Day)
+            .OrderBy(p => p.Ad).ThenBy(p => p.Soyad)
+            .ToListAsync();
+
         var vm = new HomeViewModel
         {
             ToplamKisi = await _context.Persons.CountAsync(),
@@ -36,9 +56,36 @@ public class HomeController : Controller
                     OlumTarihi = p.OlumTarihi,
                 })
                 .ToListAsync(),
+            BugunDoganlar = doganlar.Select(p => new BirthdayCardViewModel
+            {
+                Id = p.Id,
+                AdSoyad = $"{p.Ad} {p.Soyad}",
+                DogumYili = p.DogumTarihi!.Value.Year,
+                Yas = today.Year - p.DogumTarihi.Value.Year,
+                PrimaryPhotoPath = p.Photos.FirstOrDefault()?.FilePath,
+            }).ToList(),
+            BugunKaybettiklerimiz = kaybettiklerimiz.Select(p => new BirthdayCardViewModel
+            {
+                Id = p.Id,
+                AdSoyad = $"{p.Ad} {p.Soyad}",
+                DogumYili = p.DogumTarihi?.Year,
+                Yas = p.DogumTarihi.HasValue ? CalculateAge(p.DogumTarihi.Value, p.OlumTarihi!.Value) : null,
+                PrimaryPhotoPath = p.Photos.FirstOrDefault()?.FilePath,
+            }).ToList(),
         };
 
         return View(vm);
+    }
+
+    private static int CalculateAge(DateTime dogum, DateTime asOf)
+    {
+        var age = asOf.Year - dogum.Year;
+        if (dogum.Month > asOf.Month || (dogum.Month == asOf.Month && dogum.Day > asOf.Day))
+        {
+            age--;
+        }
+
+        return age;
     }
 
     public IActionResult Privacy()

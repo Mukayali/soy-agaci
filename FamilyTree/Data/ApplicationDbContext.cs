@@ -19,6 +19,8 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
 
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
+    public DbSet<PersonComment> PersonComments => Set<PersonComment>();
+
     public DbSet<Sulale> Sulaleler => Set<Sulale>();
 
     public DbSet<PersonSulale> PersonSulaleler => Set<PersonSulale>();
@@ -116,6 +118,21 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser>
         {
             entity.HasIndex(a => a.Tarih);
             entity.HasIndex(a => a.UserId);
+        });
+
+        modelBuilder.Entity<PersonComment>(entity =>
+        {
+            entity.HasIndex(c => c.PersonId);
+
+            // Person üzerindeki soft-delete filtresiyle tutarlı: yumuşak silinmiş bir kişinin
+            // yorumları da varsayılan sorgularda görünmez (bkz. Bölüm 8.1'deki Include + global
+            // query filter bulgusu — PersonSulale'deki gibi burada da filtre açıkça tanımlandı).
+            entity.HasQueryFilter(c => !c.Person.IsDeleted);
+
+            entity.HasOne(c => c.Person)
+                .WithMany(p => p.Comments)
+                .HasForeignKey(c => c.PersonId)
+                .OnDelete(DeleteBehavior.Cascade);
         });
     }
 }

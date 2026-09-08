@@ -11,11 +11,13 @@ public class PersonService : IPersonService
 
     private readonly ApplicationDbContext _context;
     private readonly IPhotoService _photoService;
+    private readonly IPersonCommentService _commentService;
 
-    public PersonService(ApplicationDbContext context, IPhotoService photoService)
+    public PersonService(ApplicationDbContext context, IPhotoService photoService, IPersonCommentService commentService)
     {
         _context = context;
         _photoService = photoService;
+        _commentService = commentService;
     }
 
     public async Task<PersonDetailViewModel?> GetDetailsAsync(int id)
@@ -179,6 +181,7 @@ public class PersonService : IPersonService
                     IsPrimary = p.IsPrimary,
                 })
                 .ToList(),
+            Yorumlar = await _commentService.GetByPersonIdAsync(id),
         };
 
         return vm;
@@ -235,7 +238,8 @@ public class PersonService : IPersonService
         pageSize = Math.Clamp(pageSize, 1, 100);
 
         var baseQuery = _context.Persons.AsNoTracking().Include(p => p.Anne).Include(p => p.Baba)
-            .Include(p => p.PersonSulaleler).ThenInclude(ps => ps.Sulale).AsQueryable();
+            .Include(p => p.PersonSulaleler).ThenInclude(ps => ps.Sulale)
+            .Include(p => p.Photos.Where(ph => ph.IsPrimary)).AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(query))
         {
@@ -626,6 +630,7 @@ public class PersonService : IPersonService
         OlumTarihi = p.OlumTarihi,
         AnneAdSoyad = p.Anne == null ? null : $"{p.Anne.Ad} {p.Anne.Soyad}",
         BabaAdSoyad = p.Baba == null ? null : $"{p.Baba.Ad} {p.Baba.Soyad}",
+        PrimaryPhotoPath = p.Photos.FirstOrDefault()?.FilePath,
         Rol = rol,
         Sulaleler = p.PersonSulaleler
             .Where(ps => ps.Sulale != null)

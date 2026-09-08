@@ -323,6 +323,50 @@
     </div>
 </div>
 
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="card-title">Yorumlar (@Model.Yorumlar.Count)</h5>
+
+        <form asp-action="AddComment" method="post" class="mb-3">
+            <input type="hidden" name="personId" value="@Model.Id" />
+            <div class="mb-2">
+                <textarea name="yorum" class="form-control" rows="3" maxlength="2000" placeholder="Bu kişi hakkında bir yorum yazın..." required></textarea>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Yorum Ekle</button>
+        </form>
+
+        @if (Model.Yorumlar.Any())
+        {
+            <ul class="list-group list-group-flush">
+                @foreach (var yorum in Model.Yorumlar)
+                {
+                    <li class="list-group-item px-0">
+                        <div class="d-flex justify-content-between align-items-start gap-2">
+                            <div>
+                                <strong>@yorum.KullaniciAdi</strong>
+                                <span class="text-muted small ms-2">@yorum.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</span>
+                                <p class="mb-0 mt-1" style="white-space:pre-wrap;">@yorum.Yorum</p>
+                            </div>
+                            @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+                            {
+                                <form asp-action="DeleteComment" method="post" class="flex-shrink-0" onsubmit="return confirm('Bu yorumu kaldırmak istediğinizden emin misiniz?');">
+                                    <input type="hidden" name="commentId" value="@yorum.Id" />
+                                    <input type="hidden" name="personId" value="@Model.Id" />
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">Kaldır</button>
+                                </form>
+                            }
+                        </div>
+                    </li>
+                }
+            </ul>
+        }
+        else
+        {
+            <p class="text-muted">Henüz yorum yapılmamış.</p>
+        }
+    </div>
+</div>
+
 @section Scripts {
     <script>
         (function () {

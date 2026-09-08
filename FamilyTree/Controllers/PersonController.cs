@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using System.Text;
 using FamilyTree.Data;
 using FamilyTree.Models;
@@ -17,6 +18,7 @@ public class PersonController : Controller
     private readonly IPhotoService _photoService;
     private readonly IAuditLogService _auditLogService;
     private readonly ICsvImportService _csvImportService;
+    private readonly IPersonCommentService _commentService;
     private readonly ApplicationDbContext _context;
     private readonly ILogger<PersonController> _logger;
 
@@ -25,6 +27,7 @@ public class PersonController : Controller
         IPhotoService photoService,
         IAuditLogService auditLogService,
         ICsvImportService csvImportService,
+        IPersonCommentService commentService,
         ApplicationDbContext context,
         ILogger<PersonController> logger)
     {
@@ -32,6 +35,7 @@ public class PersonController : Controller
         _photoService = photoService;
         _auditLogService = auditLogService;
         _csvImportService = csvImportService;
+        _commentService = commentService;
         _context = context;
         _logger = logger;
     }
@@ -223,6 +227,42 @@ public class PersonController : Controller
         if (errors.Count > 0)
         {
             TempData["ErrorMessage"] = string.Join(" | ", errors);
+        }
+
+        return RedirectToAction(nameof(Details), new { id = personId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> AddComment(int personId, string yorum)
+    {
+        var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var kullaniciAdi = User.Identity?.Name ?? "Bilinmeyen Kullanıcı";
+
+        var (success, errorMessage) = await _commentService.AddCommentAsync(personId, userId, kullaniciAdi, yorum);
+        if (success)
+        {
+            await _auditLogService.LogAsync("Yorum eklendi", "Person", personId);
+            TempData["SuccessMessage"] = "Yorumunuz eklendi.";
+        }
+        else
+        {
+            TempData["ErrorMessage"] = errorMessage;
+        }
+
+        return RedirectToAction(nameof(Details), new { id = personId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin,Editor")]
+    public async Task<IActionResult> DeleteComment(int commentId, int personId)
+    {
+        var deleted = await _commentService.DeleteCommentAsync(commentId);
+        if (deleted)
+        {
+            await _auditLogService.LogAsync("Yorum kaldırıldı", "Person", personId);
+            TempData["SuccessMessage"] = "Yorum kaldırıldı.";
         }
 
         return RedirectToAction(nameof(Details), new { id = personId });

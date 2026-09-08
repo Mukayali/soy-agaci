@@ -36,6 +36,68 @@
     </div>
 </div>
 
+@if (Model.BugunDoganlar.Any())
+{
+    <h4 class="mb-3">🎂 Bugün Doğanlar</h4>
+    <div class="row row-cols-1 row-cols-md-3 g-3 mb-4">
+        @foreach (var person in Model.BugunDoganlar)
+        {
+            <div class="col">
+                <a asp-controller="Person" asp-action="Details" asp-route-id="@person.Id" class="text-decoration-none text-reset">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body d-flex align-items-center gap-3">
+                            @if (person.PrimaryPhotoPath != null)
+                            {
+                                <img src="@person.PrimaryPhotoPath" class="rounded-circle" style="width:56px;height:56px;object-fit:cover;flex-shrink:0;" alt="@person.AdSoyad" />
+                            }
+                            else
+                            {
+                                <div class="rounded-circle bg-secondary-subtle d-flex align-items-center justify-content-center text-muted flex-shrink-0" style="width:56px;height:56px;">?</div>
+                            }
+                            <div>
+                                <h6 class="card-title mb-1">@person.AdSoyad</h6>
+                                <p class="card-text text-muted mb-0 small">@person.DogumYili — @person.Yas yaşında</p>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        }
+    </div>
+}
+
+@if (Model.BugunKaybettiklerimiz.Any())
+{
+    <h4 class="mb-3">🕯️ Bugün Kaybettiklerimiz</h4>
+    <div class="row row-cols-1 row-cols-md-3 g-3 mb-4">
+        @foreach (var person in Model.BugunKaybettiklerimiz)
+        {
+            <div class="col">
+                <a asp-controller="Person" asp-action="Details" asp-route-id="@person.Id" class="text-decoration-none text-reset">
+                    <div class="card h-100 shadow-sm">
+                        <div class="card-body d-flex align-items-center gap-3">
+                            @if (person.PrimaryPhotoPath != null)
+                            {
+                                <img src="@person.PrimaryPhotoPath" class="rounded-circle" style="width:56px;height:56px;object-fit:cover;flex-shrink:0;" alt="@person.AdSoyad" />
+                            }
+                            else
+                            {
+                                <div class="rounded-circle bg-secondary-subtle d-flex align-items-center justify-content-center text-muted flex-shrink-0" style="width:56px;height:56px;">?</div>
+                            }
+                            <div>
+                                <h6 class="card-title mb-1">@person.AdSoyad</h6>
+                                <p class="card-text text-muted mb-0 small">
+                                    @(person.DogumYili?.ToString() ?? "?")@(person.Yas.HasValue ? $" — {person.Yas} yaşında" : "")
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </a>
+            </div>
+        }
+    </div>
+}
+
 <h4 class="mb-3">Son Eklenen Kişiler</h4>
 
 @if (!Model.SonEklenenler.Any())

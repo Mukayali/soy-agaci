@@ -42,19 +42,33 @@
                             <li class="nav-item">
                                 <a class="nav-link text-dark" asp-area="" asp-controller="Photos" asp-action="Index">Fotoğraflar</a>
                             </li>
-                            <li class="nav-item">
-                                <a class="nav-link text-dark" asp-area="" asp-controller="Gedcom" asp-action="Index">GEDCOM</a>
-                            </li>
-                            @if (User.IsInRole("Admin"))
+                            @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
                             {
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="" asp-controller="Users" asp-action="Index">Kullanıcılar</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="" asp-controller="AuditLog" asp-action="Index">Audit Log</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link text-dark" asp-area="" asp-controller="Backup" asp-action="Index">Yedekleme</a>
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link text-dark dropdown-toggle" href="#" id="yonetimDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">Yönetim</a>
+                                    <ul class="dropdown-menu" aria-labelledby="yonetimDropdown">
+                                        <li>
+                                            <a class="dropdown-item" asp-area="" asp-controller="Sulale" asp-action="BulkAssign">Toplu Sülale Tanımlama</a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item" asp-area="" asp-controller="Gedcom" asp-action="Index">GEDCOM</a>
+                                        </li>
+                                        @if (User.IsInRole("Admin"))
+                                        {
+                                            <li>
+                                                <a class="dropdown-item" asp-area="" asp-controller="Comments" asp-action="Index">Yorumlar</a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" asp-area="" asp-controller="Users" asp-action="Index">Kullanıcılar</a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" asp-area="" asp-controller="AuditLog" asp-action="Index">Audit Log</a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item" asp-area="" asp-controller="Backup" asp-action="Index">Yedekleme</a>
+                                            </li>
+                                        }
+                                    </ul>
                                 </li>
                             }
                         </ul>

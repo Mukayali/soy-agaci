@@ -186,4 +186,14 @@ public class PersonDetailViewModel
     public List<PersonListItemViewModel> Kuzenler { get; set; } = new();
 
     public List<PersonPhotoViewModel> Photos { get; set; } = new();
+
+    public List<PersonCommentViewModel> Yorumlar { get; set; } = new();
+}
+
+public class PersonCommentViewModel
+{
+    public int Id { get; set; }
+    public string KullaniciAdi { get; set; } = string.Empty;
+    public string Yorum { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
 }

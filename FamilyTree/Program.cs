@@ -55,6 +55,7 @@ builder.Services.AddScoped<IAuditLogService, AuditLogService>();
 builder.Services.AddScoped<IBackupService, BackupService>();
 builder.Services.AddScoped<IGedcomService, GedcomService>();
 builder.Services.AddScoped<ICsvImportService, CsvImportService>();
+builder.Services.AddScoped<IPersonCommentService, PersonCommentService>();
 
 builder.Services.Configure<FormOptions>(options =>
 {

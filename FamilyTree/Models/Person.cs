@@ -47,6 +47,8 @@ public class Person
 
     public ICollection<PersonPhoto> Photos { get; set; } = new List<PersonPhoto>();
 
+    public ICollection<PersonComment> Comments { get; set; } = new List<PersonComment>();
+
     public ICollection<SpouseRelationship> SpouseRelationshipsAsPerson1 { get; set; } = new List<SpouseRelationship>();
 
     public ICollection<SpouseRelationship> SpouseRelationshipsAsPerson2 { get; set; } = new List<SpouseRelationship>();

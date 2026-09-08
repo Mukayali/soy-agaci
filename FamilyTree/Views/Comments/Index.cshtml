@@ -1,0 +1,87 @@
+@model AdminCommentListViewModel
+@{
+    ViewData["Title"] = "Yorumlar";
+}
+
+<h2 class="mb-3">Yorumlar <span class="text-muted fs-6">(@Model.TotalCount kayıt)</span></h2>
+
+@if (TempData["ImportWarnings"] != null)
+{
+    <div class="alert alert-warning" style="white-space:pre-wrap;">@TempData["ImportWarnings"]</div>
+}
+
+@if (Model.Items.Count == 0)
+{
+    <p class="text-muted">Henüz yorum yapılmamış.</p>
+}
+else
+{
+    <form asp-action="DeleteSelected" method="post" asp-route-page="@Model.Page">
+        <div class="mb-2">
+            <button type="submit" class="btn btn-outline-danger btn-sm"
+                    onclick="return confirm('Seçili yorumları kaldırmak istediğinizden emin misiniz?');">
+                Seçilenleri Sil
+            </button>
+        </div>
+        <table class="table table-sm table-hover align-middle">
+            <thead>
+                <tr>
+                    <th style="width:1%"><input type="checkbox" id="selectAll" aria-label="Tümünü seç" /></th>
+                    <th style="width:1%">Tarih</th>
+                    <th>Kişi</th>
+                    <th>Kullanıcı</th>
+                    <th>Yorum</th>
+                    <th style="width:1%"></th>
+                </tr>
+            </thead>
+            <tbody>
+                @foreach (var item in Model.Items)
+                {
+                    <tr>
+                        <td><input type="checkbox" name="commentIds" value="@item.Id" class="row-check" aria-label="Seç" /></td>
+                        <td class="text-nowrap">@item.CreatedAt.ToLocalTime().ToString("dd.MM.yyyy HH:mm")</td>
+                        <td class="text-nowrap">
+                            <a asp-controller="Person" asp-action="Details" asp-route-id="@item.PersonId">@item.PersonAdSoyad</a>
+                        </td>
+                        <td class="text-nowrap">@item.KullaniciAdi</td>
+                        <td style="white-space:pre-wrap;">@item.Yorum</td>
+                        <td>
+                            <button type="submit" formaction="@Url.Action("Delete")" name="commentId" value="@item.Id"
+                                    class="btn btn-sm btn-outline-danger"
+                                    formnovalidate
+                                    onclick="return confirm('Bu yorumu kaldırmak istediğinizden emin misiniz?');">
+                                Kaldır
+                            </button>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </form>
+
+    @if (Model.TotalPages > 1)
+    {
+        <nav>
+            <ul class="pagination">
+                @for (var i = 1; i <= Model.TotalPages; i++)
+                {
+                    <li class="page-item @(i == Model.Page ? "active" : "")">
+                        <a class="page-link" asp-action="Index" asp-route-page="@i">@i</a>
+                    </li>
+                }
+            </ul>
+        </nav>
+    }
+
+    @section Scripts {
+        <script>
+            (function () {
+                var selectAll = document.getElementById('selectAll');
+                if (!selectAll) return;
+                selectAll.addEventListener('change', function () {
+                    document.querySelectorAll('.row-check').forEach(function (cb) { cb.checked = selectAll.checked; });
+                });
+            })();
+        </script>
+    }
+}
