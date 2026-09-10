@@ -181,6 +181,7 @@ public class PersonService : IPersonService
                     IsPrimary = p.IsPrimary,
                 })
                 .ToList(),
+            IliskilendirilmemisFotografSayisi = await _context.PersonPhotos.CountAsync(p => p.PersonId == null),
             Yorumlar = await _commentService.GetByPersonIdAsync(id),
         };
 

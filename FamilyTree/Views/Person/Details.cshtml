@@ -88,11 +88,20 @@
 
 @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
 {
-    <form asp-action="UploadPhoto" method="post" enctype="multipart/form-data" class="d-flex gap-2 mb-4">
-        <input type="hidden" name="personId" value="@Model.Id" />
-        <input type="file" name="photos" class="form-control" multiple accept=".jpg,.jpeg,.png,.webp" required />
-        <button type="submit" class="btn btn-outline-primary text-nowrap">Fotoğraf Ekle</button>
-    </form>
+    <div class="d-flex flex-wrap gap-2 align-items-center mb-4">
+        <form asp-action="UploadPhoto" method="post" enctype="multipart/form-data" class="d-flex gap-2 flex-grow-1">
+            <input type="hidden" name="personId" value="@Model.Id" />
+            <input type="file" name="photos" class="form-control" multiple accept=".jpg,.jpeg,.png,.webp" required />
+            <button type="submit" class="btn btn-outline-primary text-nowrap">Fotoğraf Ekle</button>
+        </form>
+        <a asp-action="AddPhotos" asp-route-id="@Model.Id" class="btn btn-outline-secondary text-nowrap">
+            İlişkilendirilmemiş fotoğraflardan seç
+            @if (Model.IliskilendirilmemisFotografSayisi > 0)
+            {
+                <span class="badge bg-secondary ms-1">@Model.IliskilendirilmemisFotografSayisi</span>
+            }
+        </a>
+    </div>
 }
 
 @if (!string.IsNullOrWhiteSpace(Model.Aciklama))

@@ -1,0 +1,92 @@
+@model PersonAddPhotosViewModel
+@{
+    ViewData["Title"] = $"{Model.PersonAdSoyad} — Fotoğraf Ekle";
+}
+
+<div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+    <h2 class="mb-0">İlişkilendirilmemiş Fotoğraflardan Ekle</h2>
+    <a asp-action="Details" asp-route-id="@Model.PersonId" class="btn btn-outline-secondary">← @Model.PersonAdSoyad detayına dön</a>
+</div>
+
+<p class="text-muted">
+    Aşağıda hiçbir kişiye atanmamış fotoğraflar listeleniyor. Seçtiklerinizi
+    <strong>@Model.PersonAdSoyad</strong> kişisinin fotoğraflarına ekleyin. Kişinin henüz ana
+    fotoğrafı yoksa, eklediklerinizden ilki ana fotoğraf olur.
+</p>
+
+@if (!Model.UnassignedPhotos.Any())
+{
+    <div class="alert alert-info">
+        Şu anda ilişkilendirilmemiş fotoğraf yok.
+        <a asp-controller="Photos" asp-action="Index">Fotoğraf Galerisi</a>'nden kişi seçmeden fotoğraf yükleyebilirsiniz.
+    </div>
+}
+else
+{
+    <form asp-action="AddPhotos" method="post" id="addPhotosForm">
+        <input type="hidden" name="personId" value="@Model.PersonId" />
+
+        <div class="d-flex flex-wrap gap-2 align-items-center mb-3">
+            <button type="submit" class="btn btn-primary" id="submitBtn" disabled>Seçilenleri Ekle (<span id="count">0</span>)</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="selectAll">Tümünü Seç</button>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="clearAll">Seçimi Temizle</button>
+            <span class="text-muted small">@Model.UnassignedPhotos.Count fotoğraf</span>
+        </div>
+
+        <div class="row row-cols-2 row-cols-md-4 row-cols-lg-6 g-3">
+            @foreach (var photo in Model.UnassignedPhotos)
+            {
+                <div class="col">
+                    <label class="photo-pick d-block position-relative" style="cursor:pointer;">
+                        <input type="checkbox" class="form-check-input position-absolute top-0 start-0 m-2 photo-check" name="photoIds" value="@photo.Id" style="width:1.3rem;height:1.3rem;z-index:2;" />
+                        <img src="@photo.FilePath" class="img-fluid rounded border" style="height:160px;object-fit:cover;width:100%;" alt="İlişkilendirilmemiş fotoğraf" loading="lazy" />
+                        <a href="@photo.FilePath" target="_blank" rel="noopener" class="btn btn-sm btn-light position-absolute bottom-0 end-0 m-1 py-0 px-1" style="z-index:2;" title="Tam boyut" onclick="event.stopPropagation();">⤢</a>
+                    </label>
+                    @if (!string.IsNullOrWhiteSpace(photo.Description))
+                    {
+                        <div class="small text-muted text-truncate mt-1" title="@photo.Description">@photo.Description</div>
+                    }
+                </div>
+            }
+        </div>
+
+        <div class="mt-3">
+            <button type="submit" class="btn btn-primary" disabled id="submitBtn2">Seçilenleri Ekle (<span class="count">0</span>)</button>
+        </div>
+    </form>
+}
+
+@section Scripts {
+    <script>
+        (function () {
+            var form = document.getElementById('addPhotosForm');
+            if (!form) return;
+            var checks = form.querySelectorAll('.photo-check');
+            var submitButtons = form.querySelectorAll('#submitBtn, #submitBtn2');
+            var counters = form.querySelectorAll('#count, .count');
+
+            function refresh() {
+                var n = 0;
+                checks.forEach(function (c) {
+                    if (c.checked) { n++; }
+                    var img = c.closest('.photo-pick').querySelector('img');
+                    img.classList.toggle('border-primary', c.checked);
+                    img.classList.toggle('border-3', c.checked);
+                });
+                counters.forEach(function (el) { el.textContent = n; });
+                submitButtons.forEach(function (b) { b.disabled = n === 0; });
+            }
+
+            checks.forEach(function (c) { c.addEventListener('change', refresh); });
+            document.getElementById('selectAll').addEventListener('click', function () {
+                checks.forEach(function (c) { c.checked = true; });
+                refresh();
+            });
+            document.getElementById('clearAll').addEventListener('click', function () {
+                checks.forEach(function (c) { c.checked = false; });
+                refresh();
+            });
+            refresh();
+        })();
+    </script>
+}

@@ -147,6 +147,47 @@ public class PhotoService : IPhotoService
         return true;
     }
 
+    public async Task<int> AssignManyToPersonAsync(IEnumerable<int> photoIds, int personId)
+    {
+        var ids = photoIds.Distinct().ToList();
+        if (ids.Count == 0)
+        {
+            return 0;
+        }
+
+        var personExists = await _context.Persons.AnyAsync(p => p.Id == personId);
+        if (!personExists)
+        {
+            return 0;
+        }
+
+        // Yalnızca hiçbir kişiye atanmamış fotoğraflar taşınabilir — başka bir kişinin
+        // fotoğrafının bu yolla "çalınmasını" önle.
+        var photos = await _context.PersonPhotos
+            .Where(p => ids.Contains(p.Id) && p.PersonId == null)
+            .ToListAsync();
+
+        if (photos.Count == 0)
+        {
+            return 0;
+        }
+
+        var hasPrimary = await _context.PersonPhotos.AnyAsync(p => p.PersonId == personId && p.IsPrimary);
+
+        foreach (var photo in photos)
+        {
+            photo.PersonId = personId;
+            if (!hasPrimary)
+            {
+                photo.IsPrimary = true;
+                hasPrimary = true;
+            }
+        }
+
+        await _context.SaveChangesAsync();
+        return photos.Count;
+    }
+
     public async Task<bool> DeletePhotoAsync(int photoId)
     {
         var photo = await _context.PersonPhotos.FindAsync(photoId);

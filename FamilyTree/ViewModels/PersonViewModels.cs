@@ -187,7 +187,17 @@ public class PersonDetailViewModel
 
     public List<PersonPhotoViewModel> Photos { get; set; } = new();
 
+    /// <summary>Şu anda hiçbir kişiye atanmamış fotoğraf sayısı (Kişi Detay'daki "buradan ekle" bağlantısı için).</summary>
+    public int IliskilendirilmemisFotografSayisi { get; set; }
+
     public List<PersonCommentViewModel> Yorumlar { get; set; } = new();
+}
+
+public class PersonAddPhotosViewModel
+{
+    public int PersonId { get; set; }
+    public string PersonAdSoyad { get; set; } = string.Empty;
+    public List<PersonPhotoViewModel> UnassignedPhotos { get; set; } = new();
 }
 
 public class PersonCommentViewModel

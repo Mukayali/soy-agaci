@@ -218,6 +218,61 @@ public class PersonController : Controller
         return RedirectToAction(nameof(AutoLinkSpouses));
     }
 
+    [Authorize(Roles = "Admin,Editor")]
+    public async Task<IActionResult> AddPhotos(int id)
+    {
+        var person = await _context.Persons.AsNoTracking().FirstOrDefaultAsync(p => p.Id == id);
+        if (person == null)
+        {
+            return NotFound();
+        }
+
+        var unassigned = await _context.PersonPhotos.AsNoTracking()
+            .Where(p => p.PersonId == null)
+            .OrderByDescending(p => p.CreatedAt)
+            .Select(p => new PersonPhotoViewModel
+            {
+                Id = p.Id,
+                FilePath = p.FilePath,
+                Description = p.Description,
+                IsPrimary = false,
+            })
+            .ToListAsync();
+
+        return View(new PersonAddPhotosViewModel
+        {
+            PersonId = person.Id,
+            PersonAdSoyad = $"{person.Ad} {person.Soyad}",
+            UnassignedPhotos = unassigned,
+        });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin,Editor")]
+    public async Task<IActionResult> AddPhotos(int personId, int[]? photoIds)
+    {
+        var ids = (photoIds ?? Array.Empty<int>()).Distinct().ToArray();
+        if (ids.Length == 0)
+        {
+            TempData["ErrorMessage"] = "Hiç fotoğraf seçilmedi.";
+            return RedirectToAction(nameof(AddPhotos), new { id = personId });
+        }
+
+        var count = await _photoService.AssignManyToPersonAsync(ids, personId);
+        if (count > 0)
+        {
+            await _auditLogService.LogAsync($"İlişkilendirilmemiş {count} fotoğraf kişiye eklendi", "Person", personId);
+            TempData["SuccessMessage"] = $"{count} fotoğraf bu kişiye eklendi.";
+        }
+        else
+        {
+            TempData["ErrorMessage"] = "Seçilen fotoğraflar eklenemedi (zaten bir kişiye atanmış veya bulunamıyor olabilir).";
+        }
+
+        return RedirectToAction(nameof(Details), new { id = personId });
+    }
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Roles = "Admin,Editor")]

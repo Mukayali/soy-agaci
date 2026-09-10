@@ -327,6 +327,17 @@ Fotoğraflar" bölümünde gösterir. Admin/Editor buradan kişi seçmeden foto�
 ilişkilendirilmemiş bir fotoğrafı sonradan bir kişiye atayabilir (`IPhotoService.AssignToPersonAsync`)
 ve herhangi bir fotoğrafı silebilir.
 
+**Kişi Detay'dan toplu atama — Durum: Uygulandı.** `/Person/Details/{id}` sayfasındaki
+fotoğraf bölümünde (Admin/Editor) "İlişkilendirilmemiş fotoğraflardan seç" bağlantısı bulunur
+(mevcut ilişkilendirilmemiş fotoğraf sayısını rozet olarak gösterir —
+`PersonDetailViewModel.IliskilendirilmemisFotografSayisi`). Bağlantı `/Person/AddPhotos/{id}`
+sayfasını açar: tüm ilişkilendirilmemiş fotoğrafları (en yeni önce, `loading="lazy"`) onay
+kutulu bir ızgarada listeler; seçilenler tek gönderimle o kişiye atanır
+(`PersonController.AddPhotos` POST → `IPhotoService.AssignManyToPersonAsync`). Bu metot
+**yalnızca `PersonId == null` olan** fotoğrafları taşır (başka bir kişinin fotoğrafının bu
+yolla ele geçirilmesini önler) ve kişinin henüz ana fotoğrafı yoksa atadıklarından ilkini
+ana fotoğraf yapar.
+
 `PersonPhoto` → `Person` ilişkisi `DeleteBehavior.SetNull` olarak tanımlanmıştır: bir kişi
 (gerçek/hard) silinirse fotoğrafları kaybolmaz, otomatik olarak ilişkilendirilmemiş hale gelir.
 
