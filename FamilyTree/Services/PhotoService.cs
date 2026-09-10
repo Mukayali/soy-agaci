@@ -188,6 +188,55 @@ public class PhotoService : IPhotoService
         return photos.Count;
     }
 
+    public async Task<(bool Success, string? ErrorMessage, int? OldPersonId)> ReassignPhotoAsync(int photoId, int newPersonId)
+    {
+        var photo = await _context.PersonPhotos.FindAsync(photoId);
+        if (photo == null)
+        {
+            return (false, "Fotoğraf bulunamadı.", null);
+        }
+
+        if (photo.PersonId == newPersonId)
+        {
+            return (false, "Fotoğraf zaten bu kişiye ait.", photo.PersonId);
+        }
+
+        var newPersonExists = await _context.Persons.AnyAsync(p => p.Id == newPersonId);
+        if (!newPersonExists)
+        {
+            return (false, "Hedef kişi bulunamadı.", photo.PersonId);
+        }
+
+        var oldPersonId = photo.PersonId;
+        var wasPrimary = photo.IsPrimary;
+
+        photo.PersonId = newPersonId;
+
+        // Hedef kişinin başka bir ana fotoğrafı varsa bu ana yapılmaz; yoksa bu ana olur.
+        var newPersonHasPrimary = await _context.PersonPhotos
+            .AnyAsync(p => p.PersonId == newPersonId && p.IsPrimary && p.Id != photoId);
+        photo.IsPrimary = !newPersonHasPrimary;
+
+        await _context.SaveChangesAsync();
+
+        // Eski kişi bu fotoğrafı ana fotoğraf olarak kullanıyorsa, kalan bir fotoğrafını ana yap.
+        if (wasPrimary && oldPersonId.HasValue)
+        {
+            var replacement = await _context.PersonPhotos
+                .Where(p => p.PersonId == oldPersonId.Value)
+                .OrderBy(p => p.CreatedAt)
+                .FirstOrDefaultAsync();
+
+            if (replacement != null && !replacement.IsPrimary)
+            {
+                replacement.IsPrimary = true;
+                await _context.SaveChangesAsync();
+            }
+        }
+
+        return (true, null, oldPersonId);
+    }
+
     public async Task<bool> DeletePhotoAsync(int photoId)
     {
         var photo = await _context.PersonPhotos.FindAsync(photoId);

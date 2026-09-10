@@ -65,7 +65,10 @@
                 <img src="@photo.FilePath" class="img-fluid rounded photo-thumb @(photo.IsPrimary ? "border border-3 border-success" : "")" style="height:150px;object-fit:cover;width:100%;cursor:zoom-in;" alt="@Model.AdSoyad fotoğrafı" data-full-src="@photo.FilePath" data-caption="@Model.AdSoyad" />
                 @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
                 {
-                    <a href="/Photos?photoId=@photo.Id" class="d-block text-center small mt-1">Düzenle</a>
+                    <div class="d-flex justify-content-center gap-2 small mt-1">
+                        <a href="/Photos?photoId=@photo.Id">Düzenle</a>
+                        <button type="button" class="btn btn-link btn-sm p-0 reassign-photo-btn" data-photo-id="@photo.Id" data-photo-src="@photo.FilePath">Başka kişiyle eşleştir</button>
+                    </div>
                 }
             </div>
         }
@@ -84,6 +87,43 @@
             </div>
         </div>
     </div>
+
+    @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
+    {
+        <div class="modal fade" id="reassignModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <form asp-action="ReassignPhoto" method="post">
+                        <input type="hidden" name="photoId" id="reassignPhotoId" />
+                        <input type="hidden" name="currentPersonId" value="@Model.Id" />
+                        <input type="hidden" name="newPersonId" id="reassignNewPersonId" />
+                        <div class="modal-header">
+                            <h5 class="modal-title">Fotoğrafı başka kişiyle eşleştir</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="text-center mb-3">
+                                <img id="reassignPreview" src="" alt="Fotoğraf" class="img-fluid rounded" style="max-height:220px;" />
+                            </div>
+                            <p class="text-muted small">
+                                Bu fotoğraf şu an <strong>@Model.AdSoyad</strong> kişisine ait.
+                                Taşımak istediğiniz kişiyi seçin. (Fotoğraf @Model.AdSoyad'dan kaldırılır.)
+                            </p>
+                            <div class="position-relative">
+                                <input type="text" id="reassignSearch" class="form-control" placeholder="Kişi ara... (ad, soyad veya TC)" autocomplete="off" />
+                                <div id="reassignResults" class="list-group position-absolute w-100" style="top:100%;z-index:1080;"></div>
+                            </div>
+                            <div id="reassignSelected" class="mt-2 small"></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                            <button type="submit" class="btn btn-primary" id="reassignSubmit" disabled>Bu Kişiye Taşı</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    }
 }
 
 @if (User.IsInRole("Admin") || User.IsInRole("Editor"))
@@ -499,6 +539,71 @@
             });
 
             goBtn.addEventListener('click', navigate);
+        })();
+
+        (function () {
+            var modalEl = document.getElementById('reassignModal');
+            if (!modalEl) {
+                return;
+            }
+
+            var modal = new bootstrap.Modal(modalEl);
+            var photoIdInput = document.getElementById('reassignPhotoId');
+            var newPersonIdInput = document.getElementById('reassignNewPersonId');
+            var preview = document.getElementById('reassignPreview');
+            var search = document.getElementById('reassignSearch');
+            var results = document.getElementById('reassignResults');
+            var selected = document.getElementById('reassignSelected');
+            var submit = document.getElementById('reassignSubmit');
+            var timeoutId;
+
+            function resetSelection() {
+                newPersonIdInput.value = '';
+                selected.textContent = '';
+                submit.disabled = true;
+            }
+
+            document.querySelectorAll('.reassign-photo-btn').forEach(function (btn) {
+                btn.addEventListener('click', function () {
+                    photoIdInput.value = btn.dataset.photoId;
+                    preview.src = btn.dataset.photoSrc;
+                    search.value = '';
+                    results.innerHTML = '';
+                    resetSelection();
+                    modal.show();
+                });
+            });
+
+            search.addEventListener('input', function () {
+                resetSelection();
+                clearTimeout(timeoutId);
+                var q = search.value.trim();
+                if (q.length < 2) {
+                    results.innerHTML = '';
+                    return;
+                }
+                timeoutId = setTimeout(function () {
+                    fetch('/api/person/search?q=' + encodeURIComponent(q) + '&excludeId=@Model.Id')
+                        .then(function (r) { return r.json(); })
+                        .then(function (data) {
+                            results.innerHTML = '';
+                            data.forEach(function (item) {
+                                var el = document.createElement('button');
+                                el.type = 'button';
+                                el.className = 'list-group-item list-group-item-action';
+                                el.textContent = item.adSoyad + (item.dogumYili ? ' (' + item.dogumYili + ')' : '') + (item.tcKimlikNoMasked ? ' — TC: ' + item.tcKimlikNoMasked : '');
+                                el.addEventListener('click', function () {
+                                    newPersonIdInput.value = item.id;
+                                    search.value = item.adSoyad;
+                                    selected.innerHTML = 'Seçilen kişi: <strong>' + item.adSoyad + '</strong>';
+                                    submit.disabled = false;
+                                    results.innerHTML = '';
+                                });
+                                results.appendChild(el);
+                            });
+                        });
+                }, 250);
+            });
         })();
     </script>
 }

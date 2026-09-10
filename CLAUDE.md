@@ -338,6 +338,14 @@ kutulu bir ızgarada listeler; seçilenler tek gönderimle o kişiye atanır
 yolla ele geçirilmesini önler) ve kişinin henüz ana fotoğrafı yoksa atadıklarından ilkini
 ana fotoğraf yapar.
 
+**Yanlış eşleştirilmiş fotoğrafı taşıma — Durum: Uygulandı.** Kişi Detay sayfasında her
+fotoğrafın altında (Admin/Editor) "Başka kişiyle eşleştir" düğmesi bulunur; bir modal
+açıp kişi arayarak fotoğrafı doğru kişiye taşır (`PersonController.ReassignPhoto` POST →
+`IPhotoService.ReassignPhotoAsync`). `AssignManyToPersonAsync`'in aksine bu metot **zaten
+bir kişiye atanmış** fotoğrafları da taşır (amaç budur); taşırken: fotoğraf eski kişinin
+ana fotoğrafıysa eski kişinin kalan bir fotoğrafı ana yapılır, yeni kişinin ana fotoğrafı
+yoksa taşınan fotoğraf ana yapılır. Başarıdan sonra yeni kişinin Detay sayfasına yönlenir.
+
 `PersonPhoto` → `Person` ilişkisi `DeleteBehavior.SetNull` olarak tanımlanmıştır: bir kişi
 (gerçek/hard) silinirse fotoğrafları kaybolmaz, otomatik olarak ilişkilendirilmemiş hale gelir.
 

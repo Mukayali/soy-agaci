@@ -372,6 +372,23 @@ public class PersonController : Controller
     [HttpPost]
     [ValidateAntiForgeryToken]
     [Authorize(Roles = "Admin,Editor")]
+    public async Task<IActionResult> ReassignPhoto(int photoId, int currentPersonId, int newPersonId)
+    {
+        var (success, errorMessage, _) = await _photoService.ReassignPhotoAsync(photoId, newPersonId);
+        if (success)
+        {
+            await _auditLogService.LogAsync($"Fotoğraf {photoId} başka kişiye taşındı", "Person", newPersonId);
+            TempData["SuccessMessage"] = "Fotoğraf seçilen kişiyle yeniden ilişkilendirildi.";
+            return RedirectToAction(nameof(Details), new { id = newPersonId });
+        }
+
+        TempData["ErrorMessage"] = errorMessage ?? "Fotoğraf taşınamadı.";
+        return RedirectToAction(nameof(Details), new { id = currentPersonId });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    [Authorize(Roles = "Admin,Editor")]
     public async Task<IActionResult> AddSpouse(int personId, int spouseId, DateTime? marriageDate)
     {
         if (personId == spouseId)

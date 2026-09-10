@@ -28,6 +28,13 @@ public interface IPhotoService
     /// </summary>
     Task<int> AssignManyToPersonAsync(IEnumerable<int> photoIds, int personId);
 
+    /// <summary>
+    /// Yanlış kişiyle eşleştirilmiş bir fotoğrafı başka bir kişiye taşır. Eski kişinin ana
+    /// fotoğrafıysa yerine kalan bir fotoğrafını ana yapar; yeni kişinin ana fotoğrafı yoksa
+    /// bunu ana yapar.
+    /// </summary>
+    Task<(bool Success, string? ErrorMessage, int? OldPersonId)> ReassignPhotoAsync(int photoId, int newPersonId);
+
     /// <summary>Var olan bir fotoğrafın dosyasını (ör. kırpma/döndürme sonrası) yenisiyle değiştirir; kayıt/rol/açıklama gibi diğer alanlar korunur.</summary>
     Task<PhotoUploadResult> ReplacePhotoFileAsync(int photoId, IFormFile file);
 }
